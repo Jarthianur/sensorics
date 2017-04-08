@@ -4,6 +4,13 @@
 
 #define NULL_CHECK if (check_null() == (U8_ERROR)) return (U8_ERROR);
 
+int32_t unpack_press();
+int32_t unpack_temp();
+int32_t unpack_humid();
+uint8_t check_null();
+uint8_t set_bit_slice(uint8_t regvar, uint8_t mask, uint8_t pos, uint8_t val);
+uint8_t get_bit_slice(uint8_t regvar, uint8_t mask, uint8_t pos);
+
 static bme280* p_bme280 = NULL;
 
 uint8_t bme280_init(const char* dev, bme280* inst)
@@ -98,6 +105,9 @@ uint8_t bme280_powermode(uint8_t mode)
 uint8_t bme280_powermode()
 {
     NULL_CHECK
+    uint8_t v_mode_u8r = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_mode_u8r);
+    p_bme280->power_mode = get_bit_slice(v_mode_u8r, 0x03, 0);// define macros
     return p_bme280->power_mode;
 }
 
@@ -108,6 +118,9 @@ uint8_t bme280_temp_oversample(uint8_t rate)
 uint8_t bme280_temp_oversample()
 {
     NULL_CHECK
+    uint8_t v_data_u8 = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_u8);
+    p_bme280->ovrsmpl_temp = get_bit_slice(v_data_u8, 0xE0, 5); // define macros
     return p_bme280->ovrsmpl_temp;
 }
 
@@ -118,16 +131,73 @@ uint8_t bme280_press_oversample(uint8_t rate)
 uint8_t bme280_press_oversample()
 {
     NULL_CHECK
+    uint8_t v_data_u8 = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_u8);
+    p_bme280->ovrsmpl_press = get_bit_slice(v_data_u8, 0x1C, 2); //TODO define macros
     return p_bme280->ovrsmpl_press;
 }
 
 uint8_t bme280_humid_oversample(uint8_t rate)
 {
+    NULL_CHECK
+    uint8_t v_data_uint8_t = 0;
+    uint8_t pre_ctrl_meas_value = 0;
+    uint8_t v_pre_config_value_uint8_t = 0;
+    uint8_t v_prev_pow_mode_uint8_t = 0;
+
+    /* write humidity oversampling*/
+    v_data_uint8_t = p_bme280->ctrl_humid_reg;
+    v_data_uint8_t = set_bit_slice(v_data_uint8_t, 0x07, 0, rate); //TODO DEFINE MACROS
+
+    v_prev_pow_mode_uint8_t = bme280_powermode();
+    if (v_prev_pow_mode_uint8_t != BME280_SLEEP_MODE)
+    {
+        bme280_soft_rst();
+        bme280_delay(3);
+        /* write previous value of
+         configuration register*/
+        v_pre_config_value_uint8_t = p_bme280->config_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, v_pre_config_value_uint8_t);
+
+        /* write the value of control humidity*/
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, v_data_uint8_t);
+
+        /* write previous value of
+         control measurement register*/
+        pre_ctrl_meas_value = p_bme280->ctrl_meas_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, pre_ctrl_meas_value);
+    }
+    else
+    {
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, v_data_uint8_t);
+        /* Control humidity write will effective only
+         after the control measurement register*/
+        pre_ctrl_meas_value = p_bme280->ctrl_meas_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, pre_ctrl_meas_value);
+    }
+    p_bme280->ovrsmpl_humid = rate;
+    /* read the control measurement register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_uint8_t);
+
+    p_bme280->ctrl_meas_reg = v_data_uint8_t;
+    /* read the control humidity register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &v_data_uint8_t);
+
+    p_bme280->ctrl_humid_reg = v_data_uint8_t;
+    /* read the control configuration register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_uint8_t);
+
+    p_bme280->config_reg = v_data_uint8_t;
+
+    return U8_SUCCESS;
 }
 
 uint8_t bme280_humid_oversample()
 {
     NULL_CHECK
+    uint8_t val = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &val);
+    p_bme280->ovrsmpl_humid = get_bit_slice(val, BME280_REG_CTRL_HUMID);
     return p_bme280->ovrsmpl_humid;
 }
 
@@ -138,6 +208,9 @@ uint8_t bme280_standby_durn(uint8_t ms)
 uint8_t bme280_standby_durn()
 {
     NULL_CHECK
+    uint8_t v_data_u8 = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_u8);
+    p_bme280->standby_durn = get_bit_slice(v_data_u8, 0xE0, 5); // TODO define macros
     return p_bme280->standby_durn;
 }
 
@@ -148,19 +221,114 @@ uint8_t bme280_filter(uint8_t coef)
 uint8_t bme280_filter()
 {
     NULL_CHECK
+    uint8_t v_data_u8 = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_u8);
+    p_bme280->filter = get_bit_slice(v_data_u8, 0x1C, 2); //TODO define macros
     return p_bme280->filter;
 }
 
 uint8_t bme280_compensate_temp()
 {
+    NULL_CHECK
+    int32_t vx1 = 0;
+    int32_t vx2 = 0;
+    int32_t temperature = 0;
+    int32_t tmp = p_bme280->p_uncomp_meas->temperature;
+    bme280_calib_table* calib = p_bme280->p_calib;
+
+    /* calculate x1*/
+    vx1 =
+            ((((tmp >> 3) - ((int32_t) calib->dig_T1 << 1))) * ((int32_t) calib->dig_T2)) >> 11;
+    /* calculate x2*/
+    vx2 = (((((tmp >> 4) - ((int32_t) calib->dig_T1))
+            * ((tmp >> 4) - ((int32_t) calib->dig_T1)))
+            >> 12)
+           * ((int32_t) calib->dig_T3))
+          >> 14;
+    /* calculate t_fine*/
+    calib->t_fine = vx1 + vx2;
+    /* calculate temperature*/
+    temperature = (calib->t_fine * 5 + 128) >> 8;
+
+    p_bme280->comp_temp = temperature;
+    return U8_SUCCESS;
 }
 
 uint8_t bme280_compensate_press()
 {
+    NULL_CHECK
+    int32_t vx1 = 0;
+    int32_t vx2 = 0;
+    uint32_t pressure = 0;
+    int32_t tmp = p_bme280->p_uncomp_meas->pressure;
+    bme280_calib_table* calib = p_bme280->p_calib;
+
+    /* calculate x1*/
+    vx1 = (((int32_t) calib->t_fine) >> 1) - (int32_t) 64000;
+    /* calculate x2*/
+    vx2 = (((vx1 >> 2) * (vx1 >> 2)) >> 11) * ((int32_t) calib->dig_P6);
+    /* calculate x2*/
+    vx2 = vx2 + ((vx1 * ((int32_t) calib->dig_P5)) << 1);
+    /* calculate x2*/
+    vx2 = (vx2 >> 2) + (((int32_t) calib->dig_P4) << 16);
+    /* calculate x1*/
+    vx1 =
+            (((calib->dig_P3 * (((vx1 >> 2) * (vx1 >> 2)) >> 13)) >> 3) + ((((int32_t) calib->dig_P2)
+                    * vx1)
+                                                                           >> 1))
+            >> 18;
+    /* calculate x1*/
+    vx1 = ((((32768 + vx1)) * ((int32_t) calib->dig_P1)) >> 15);
+    /* calculate pressure*/
+    pressure = (((uint32_t) (((int32_t) 1048576) - tmp) - (vx2 >> 12))) * 3125;
+    if (pressure < 0x80000000)
+    /* Avoid exception caused by division by zero */
+    if (vx1 != 0) pressure = (pressure << 1) / ((uint32_t) vx1);
+    else return U8_ERROR;
+    else
+    /* Avoid exception caused by division by zero */
+    if (vx1 != 0) pressure = (pressure / (uint32_t) vx1) * 2;
+    else return U8_ERROR;
+
+    vx1 = (((int32_t) calib->dig_P9) * ((int32_t) (((pressure >> 3) * (pressure >> 3))
+            >> 13)))
+          >> 12;
+    vx2 = (((int32_t) (pressure >> 2)) * ((int32_t) calib->dig_P8)) >> 13;
+    pressure = (uint32_t) ((int32_t) pressure + ((vx1 + vx2 + calib->dig_P7) >> 4));
+
+    p_bme280->comp_press = pressure;
+    return U8_SUCCESS;
 }
 
 uint8_t bme280_compensate_humid()
 {
+    NULL_CHECK
+    int32_t tmp = p_bme280->p_uncomp_meas->humidity;
+    bme280_calib_table* calib = p_bme280->p_calib;
+    int32_t vx1 = 0;
+
+    /* calculate x1*/
+    vx1 = (calib->t_fine - ((int32_t) 76800));
+    /* calculate x1*/
+    vx1 = (((((tmp << 14) - (((int32_t) calib->dig_H4) << 20)
+              - (((int32_t) calib->dig_H5) * vx1))
+             + ((int32_t) 16384))
+            >> 15)
+           * (((((((vx1 * ((int32_t) calib->dig_H6)) >> 10) * (((vx1
+                   * ((int32_t) calib->dig_H3))
+                                                                >> 11)
+                                                               + ((int32_t) 32768)))
+                 >> 10)
+                + ((int32_t) 2097152))
+               * ((int32_t) calib->dig_H2)
+               + 8192)
+              >> 14));
+    vx1 = (vx1 - (((((vx1 >> 15) * (vx1 >> 15)) >> 7) * ((int32_t) calib->dig_H1)) >> 4));
+    vx1 = (vx1 < 0 ? 0 : vx1);
+    vx1 = (vx1 > 419430400 ? 419430400 : vx1);
+
+    p_bme280->comp_humid = (uint32_t) (vx1 >> 12);
+    return U8_SUCCESS;
 }
 
 double bme280_temp()
@@ -195,6 +363,11 @@ uint8_t bme280_soft_rst()
     {
         return U8_SUCCESS;
     }
+}
+
+void bme280_delay(uint8_t ms)
+{
+//TODO impl
 }
 
 uint8_t unpack_press()
@@ -239,5 +412,15 @@ uint8_t check_null()
         return U8_ERROR;
     }
     return U8_SUCCESS;
+}
+
+uint8_t set_bit_slice(uint8_t regvar, uint8_t mask, uint8_t pos, uint8_t val)
+{
+    return (regvar & ~mask) | ((val << pos) & mask);
+}
+
+uint8_t get_bit_slice(uint8_t regvar, uint8_t mask, uint8_t pos)
+{
+    return (regvar & mask) >> pos;
 }
 
