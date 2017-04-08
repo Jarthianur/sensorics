@@ -100,14 +100,67 @@ uint8_t bme280_read_humid()
 
 uint8_t bme280_powermode(uint8_t mode)
 {
+    NULL_CHECK
+    uint8_t v_mode_uint8_tr = 0;
+    uint8_t v_prev_pow_mode_uint8_t = 0;
+    uint8_t v_pre_ctrl_hum_value_uint8_t = 0;
+    uint8_t v_pre_config_value_uint8_t = 0;
+    uint8_t v_data_uint8_t = 0;
+
+    if (mode <= BME280_NORMAL_MODE)
+    {
+        v_mode_uint8_tr = p_bme280->ctrl_meas_reg;
+        v_mode_uint8_tr = set_bit_slice(v_mode_uint8_tr, 0x03, 0, mode);
+
+        v_prev_pow_mode_uint8_t = bme280_powermode();
+        if (v_prev_pow_mode_uint8_t != BME280_SLEEP_MODE)
+        {
+            bme280_soft_rst();
+            bme280_delay(3);
+            /* write previous value of
+             configuration register*/
+            v_pre_config_value_uint8_t = p_bme280->config_reg;
+            i2c_write_reg(p_bme280->fd, BME280_REG_CONF, v_pre_config_value_uint8_t);
+
+            /* write previous value of
+             humidity oversampling*/
+            v_pre_ctrl_hum_value_uint8_t = p_bme280->ctrl_humid_reg;
+            i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID,
+                          v_pre_ctrl_hum_value_uint8_t);
+
+            /* write previous and updated value of
+             control measurement register*/
+            i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, v_mode_uint8_tr);
+        }
+        else
+        {
+            i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, v_mode_uint8_tr);
+        }
+        /* read the control measurement register value*/
+        i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_uint8_t);
+        p_bme280->ctrl_meas_reg = v_data_uint8_t;
+
+        /* read the control humidity register value*/
+        i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &v_data_uint8_t);
+        p_bme280->ctrl_humid_reg = v_data_uint8_t;
+
+        /* read the config register value*/
+        i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_uint8_t);
+        p_bme280->config_reg = v_data_uint8_t;
+    }
+    else
+    {
+        return U8_ERROR;
+    }
+    return U8_SUCCESS;
 }
 
 uint8_t bme280_powermode()
 {
     NULL_CHECK
-    uint8_t v_mode_u8r = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_mode_u8r);
-    p_bme280->power_mode = get_bit_slice(v_mode_u8r, 0x03, 0);// define macros
+    uint8_t v_mode_uint8_tr = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_mode_uint8_tr);
+    p_bme280->power_mode = get_bit_slice(v_mode_uint8_tr, 0x03, 0); // define macros
     return p_bme280->power_mode;
 }
 
@@ -118,9 +171,9 @@ uint8_t bme280_temp_oversample(uint8_t rate)
 uint8_t bme280_temp_oversample()
 {
     NULL_CHECK
-    uint8_t v_data_u8 = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_u8);
-    p_bme280->ovrsmpl_temp = get_bit_slice(v_data_u8, 0xE0, 5); // define macros
+    uint8_t v_data_uint8_t = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_uint8_t);
+    p_bme280->ovrsmpl_temp = get_bit_slice(v_data_uint8_t, 0xE0, 5); // define macros
     return p_bme280->ovrsmpl_temp;
 }
 
@@ -131,9 +184,9 @@ uint8_t bme280_press_oversample(uint8_t rate)
 uint8_t bme280_press_oversample()
 {
     NULL_CHECK
-    uint8_t v_data_u8 = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_u8);
-    p_bme280->ovrsmpl_press = get_bit_slice(v_data_u8, 0x1C, 2); //TODO define macros
+    uint8_t v_data_uint8_t = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_uint8_t);
+    p_bme280->ovrsmpl_press = get_bit_slice(v_data_uint8_t, 0x1C, 2); //TODO define macros
     return p_bme280->ovrsmpl_press;
 }
 
@@ -208,9 +261,9 @@ uint8_t bme280_standby_durn(uint8_t ms)
 uint8_t bme280_standby_durn()
 {
     NULL_CHECK
-    uint8_t v_data_u8 = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_u8);
-    p_bme280->standby_durn = get_bit_slice(v_data_u8, 0xE0, 5); // TODO define macros
+    uint8_t v_data_uint8_t = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_uint8_t);
+    p_bme280->standby_durn = get_bit_slice(v_data_uint8_t, 0xE0, 5); // TODO define macros
     return p_bme280->standby_durn;
 }
 
@@ -221,9 +274,9 @@ uint8_t bme280_filter(uint8_t coef)
 uint8_t bme280_filter()
 {
     NULL_CHECK
-    uint8_t v_data_u8 = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_u8);
-    p_bme280->filter = get_bit_slice(v_data_u8, 0x1C, 2); //TODO define macros
+    uint8_t v_data_uint8_t = 0;
+    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_uint8_t);
+    p_bme280->filter = get_bit_slice(v_data_uint8_t, 0x1C, 2); //TODO define macros
     return p_bme280->filter;
 }
 
