@@ -1,6 +1,7 @@
 #include "bme280.h"
 #include "i2cif.h"
 #include <stddef.h>
+#include <time.h>
 
 #define NULL_CHECK if (check_null() == (U8_ERROR)) return (U8_ERROR);
 
@@ -21,13 +22,47 @@ uint8_t bme280_init(const char* dev, bme280* inst)
     {
         return U8_ERROR;
     }
-    return U8_SUCCESS;
+    return bme280_read_calib();
 }
 
 uint8_t bme280_deinit()
 {
     NULL_CHECK
     i2c_close_dev(p_bme280->fd);
+    return U8_SUCCESS;
+}
+
+uint8_t bme280_read_calib()
+{
+    NULL_CHECK
+    uint8_t* buff = p_bme280->buffer;
+    bme280_calib_table* calib = p_bme280->p_calib;
+
+    i2c_read_block(p_bme280->fd, BME280_REG_DIG_T1, 26, buff);
+
+    calib->dig_T1 = (uint16_t) ((((uint16_t) ((uint8_t) buff[1])) << 8) | buff[0]);
+    calib->dig_T2 = (int16_t) ((((int16_t) ((int8_t) buff[3])) << 8) | buff[2]);
+    calib->dig_T3 = (int16_t) ((((int16_t) ((int8_t) buff[5])) << 8) | buff[4]);
+    calib->dig_P1 = (uint16_t) ((((uint16_t) ((uint8_t) buff[7])) << 8) | buff[6]);
+    calib->dig_P2 = (int16_t) ((((int16_t) ((int8_t) buff[9])) << 8) | buff[8]);
+    calib->dig_P3 = (int16_t) ((((int16_t) ((int8_t) buff[11])) << 8) | buff[10]);
+    calib->dig_P4 = (int16_t) ((((int16_t) ((int8_t) buff[13])) << 8) | buff[12]);
+    calib->dig_P5 = (int16_t) ((((int16_t) ((int8_t) buff[15])) << 8) | buff[14]);
+    calib->dig_P6 = (int16_t) ((((int16_t) ((int8_t) buff[17])) << 8) | buff[16]);
+    calib->dig_P7 = (int16_t) ((((int16_t) ((int8_t) buff[19])) << 8) | buff[18]);
+    calib->dig_P8 = (int16_t) ((((int16_t) ((int8_t) buff[21])) << 8) | buff[20]);
+    calib->dig_P9 = (int16_t) ((((int16_t) ((int8_t) buff[23])) << 8) | buff[22]);
+    calib->dig_H1 = buff[25];
+
+    i2c_read_block(p_bme280->fd, BME280_REG_DIG_H2, 7, buff);
+
+    calib->dig_H2 = (int16_t) ((((int16_t) ((int8_t) buff[1])) << 8) | buff[0]);
+    calib->dig_H3 = buff[2];
+    calib->dig_H4 = (int16_t) ((((int16_t) ((int8_t) buff[3])) << 4)
+            | (((uint8_t) 0x0F) & buff[4]));
+    calib->dig_H5 = (int16_t) ((((int16_t) ((int8_t) buff[5])) << 4) | (buff[4] >> 4));
+    calib->dig_H6 = (int8_t) buff[6];
+
     return U8_SUCCESS;
 }
 
@@ -166,6 +201,52 @@ uint8_t bme280_powermode()
 
 uint8_t bme280_temp_oversample(uint8_t rate)
 {
+    NULL_CHECK
+    uint8_t v_data_uint8_t = 0;
+    uint8_t v_prev_pow_mode_uint8_t = 0;
+    uint8_t v_pre_ctrl_hum_value_uint8_t = 0;
+    uint8_t v_pre_config_value_uint8_t = 0;
+
+    v_data_uint8_t = p_bme280->ctrl_meas_reg;
+    v_data_uint8_t = set_bit_slice(v_data_uint8_t, 0xE0, 5, rate);
+    v_prev_pow_mode_uint8_t = bme280_powermode();
+    if (v_prev_pow_mode_uint8_t != BME280_SLEEP_MODE)
+    {
+        bme280_soft_rst();
+        bme280_delay(3);
+        /* write previous value
+         of configuration register*/
+        v_pre_config_value_uint8_t = p_bme280->config_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, v_pre_config_value_uint8_t);
+
+        /* write previous value
+         of humidity oversampling*/
+        v_pre_ctrl_hum_value_uint8_t = p_bme280->ctrl_humid_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, v_pre_ctrl_hum_value_uint8_t);
+
+        /* write previous and updated value
+         of configuration register*/
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, v_data_uint8_t);
+    }
+    else
+    {
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, v_data_uint8_t);
+    }
+    p_bme280->ovrsmpl_temp = rate;
+    /* read the control measurement register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_uint8_t);
+    p_bme280->ctrl_meas_reg = v_data_uint8_t;
+
+    /* read the control humidity register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &v_data_uint8_t);
+    p_bme280->ctrl_humid_reg = v_data_uint8_t;
+
+    /* read the control
+     configuration register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_uint8_t);
+
+    p_bme280->config_reg = v_data_uint8_t;
+    return U8_SUCCESS;
 }
 
 uint8_t bme280_temp_oversample()
@@ -179,6 +260,53 @@ uint8_t bme280_temp_oversample()
 
 uint8_t bme280_press_oversample(uint8_t rate)
 {
+    NULL_CHECK
+    uint8_t v_data_uint8_t = 0;
+    uint8_t v_prev_pow_mode_uint8_t = 0;
+    uint8_t v_pre_ctrl_hum_value_uint8_t = 0;
+    uint8_t v_pre_config_value_uint8_t = 0;
+
+    v_data_uint8_t = p_bme280->ctrl_meas_reg;
+    v_data_uint8_t = set_bit_slice(v_data_uint8_t, 0x1C, 2, rate);
+
+    v_prev_pow_mode_uint8_t = bme280_powermode();
+    if (v_prev_pow_mode_uint8_t != BME280_SLEEP_MODE)
+    {
+        bme280_soft_rst();
+        bme280_delay(3);
+
+        /* write previous value of
+         configuration register*/
+        v_pre_config_value_uint8_t = p_bme280->config_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, v_pre_config_value_uint8_t);
+
+        /* write previous value of
+         humidity oversampling*/
+        v_pre_ctrl_hum_value_uint8_t = p_bme280->ctrl_humid_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, v_pre_ctrl_hum_value_uint8_t);
+
+        /* write previous and updated value of
+         control measurement register*/
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, v_data_uint8_t);
+    }
+    else
+    {
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, v_data_uint8_t);
+    }
+    p_bme280->ovrsmpl_press = rate;
+    /* read the control measurement register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_uint8_t);
+    p_bme280->ctrl_meas_reg = v_data_uint8_t;
+
+    /* read the control humidity register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &v_data_uint8_t);
+    p_bme280->ctrl_humid_reg = v_data_uint8_t;
+    /* read the control
+     configuration register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_uint8_t);
+    p_bme280->config_reg = v_data_uint8_t;
+
+    return U8_SUCCESS;
 }
 
 uint8_t bme280_press_oversample()
@@ -256,6 +384,51 @@ uint8_t bme280_humid_oversample()
 
 uint8_t bme280_standby_durn(uint8_t ms)
 {
+    NULL_CHECK
+    uint8_t v_data_uint8_t = 0;
+    uint8_t pre_ctrl_meas_value = 0;
+    uint8_t v_prev_pow_mode_uint8_t = 0;
+    uint8_t v_pre_ctrl_hum_value_uint8_t = 0;
+
+    v_data_uint8_t = p_bme280->config_reg;
+    v_data_uint8_t = set_bit_slice(v_data_uint8_t, 0xE0, 5, ms);
+    v_prev_pow_mode_uint8_t = bme280_powermode();
+
+    if (v_prev_pow_mode_uint8_t != BME280_SLEEP_MODE)
+    {
+        bme280_soft_rst();
+        bme280_delay(3);
+        /* write previous and updated value of
+         configuration register*/
+        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, v_data_uint8_t);
+
+        /* write previous value of
+         humidity oversampling*/
+        v_pre_ctrl_hum_value_uint8_t = p_bme280->ctrl_humid_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, v_pre_ctrl_hum_value_uint8_t);
+
+        /* write previous value of control
+         measurement register*/
+        pre_ctrl_meas_value = p_bme280->ctrl_meas_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, pre_ctrl_meas_value);
+    }
+    else
+    {
+        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, v_data_uint8_t);
+    }
+    /* read the control measurement register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_uint8_t);
+    p_bme280->ctrl_meas_reg = v_data_uint8_t;
+
+    /* read the control humidity register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &v_data_uint8_t);
+    p_bme280->ctrl_humid_reg = v_data_uint8_t;
+
+    /* read the configuration register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_uint8_t);
+
+    p_bme280->config_reg = v_data_uint8_t;
+    return U8_SUCCESS;
 }
 
 uint8_t bme280_standby_durn()
@@ -269,6 +442,49 @@ uint8_t bme280_standby_durn()
 
 uint8_t bme280_filter(uint8_t coef)
 {
+    NULL_CHECK
+    uint8_t v_data_uint8_t = 0;
+    uint8_t pre_ctrl_meas_value = 0;
+    uint8_t v_prev_pow_mode_uint8_t = 0;
+    uint8_t v_pre_ctrl_hum_value_uint8_t = 0;
+
+    v_data_uint8_t = p_bme280->config_reg;
+    v_data_uint8_t = set_bit_slice(v_data_uint8_t, 0x1C, 2, coef);
+    v_prev_pow_mode_uint8_t = bme280_powermode();
+    if (v_prev_pow_mode_uint8_t != BME280_SLEEP_MODE)
+    {
+        bme280_soft_rst();
+        bme280_delay(3);
+        /* write previous and updated value of
+         configuration register*/
+        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, v_data_uint8_t);
+
+        /* write previous value of
+         humidity oversampling*/
+        v_pre_ctrl_hum_value_uint8_t = p_bme280->ctrl_humid_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, v_pre_ctrl_hum_value_uint8_t);
+
+        /* write previous value of
+         control measurement register*/
+        pre_ctrl_meas_value = p_bme280->ctrl_meas_reg;
+        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, pre_ctrl_meas_value);
+    }
+    else
+    {
+        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, v_data_uint8_t);
+    }
+    /* read the control measurement register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &v_data_uint8_t);
+    p_bme280->ctrl_meas_reg = v_data_uint8_t;
+
+    /* read the control humidity register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &v_data_uint8_t);
+    p_bme280->ctrl_humid_reg = v_data_uint8_t;
+
+    /* read the configuration register value*/
+    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &v_data_uint8_t);
+    p_bme280->config_reg = v_data_uint8_t;
+    return U8_SUCCESS;
 }
 
 uint8_t bme280_filter()
@@ -420,7 +636,10 @@ uint8_t bme280_soft_rst()
 
 void bme280_delay(uint8_t ms)
 {
-//TODO impl
+    struct timespec tv, tvr;
+    tv.tv_sec = 0;
+    tv.tv_nsec = ms * 1000000L;
+    nanosleep(&tv, &tvr);
 }
 
 uint8_t unpack_press()

@@ -39,12 +39,6 @@
 #define BME280_REG_HUMID         (0xFD)
 #define BME280_REG_MEAS          (BME280_REG_PRESS)
 
-#define BME280_GET_BITSLICE(regvar, bitname)\
-        ((regvar & bitname##__MSK) >> bitname##__POS)
-
-#define BME280_SET_BITSLICE(regvar, bitname, val)\
-((regvar & ~bitname##__MSK) | ((val<<bitname##__POS)&bitname##__MSK))
-
 /* numeric definitions */
 #define BME280_PRESSURE_TEMPERATURE_CALIB_DATA_LENGTH       (26)
 #define BME280_HUMIDITY_CALIB_DATA_LENGTH       (7)
@@ -327,6 +321,10 @@ uint8_t bme280_init(const char* dev, bme280* inst);
  * IF SO THIS FUNCTION MUST BE CALLED AT LAST!
  */
 uint8_t bme280_deinit();
+/**
+ * Read calibration table.
+ */
+uint8_t bme280_read_calib();
 /**
  * Read not-compensated temperature, pressure
  * and humidity all in once (burst).
