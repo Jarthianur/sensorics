@@ -17,7 +17,9 @@ int handle(char* buf, size_t len)
 
 int main(int argc, char** argv)
 {
+    apr_initialize();
     server_run(SERVER_DEFAULT_PORT, handle);
+    apr_terminate();
     return 0;
 }
 

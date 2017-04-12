@@ -15,7 +15,7 @@ int error(apr_status_t stat);
 
 static client_handler handle_client = NULL;
 
-int server_run(int port, client_handler handle)
+int server_run(int port, client_handler handle, apr_pool_t* parent)
 {
     if (handle == NULL)
     {
@@ -25,15 +25,13 @@ int server_run(int port, client_handler handle)
     {
         handle_client = handle;
     }
-    apr_initialize();
-
     apr_socket_t *so_listen;
     apr_pool_t *mem_pool;
     apr_status_t ret_stat;
     apr_threadattr_t *thd_attr;
     apr_sockaddr_t *sa;
 
-    apr_pool_create(&mem_pool, NULL);
+    apr_pool_create(&mem_pool, parent);
     apr_threadattr_create(&thd_attr, mem_pool);
 
     if ((ret_stat = apr_sockaddr_info_get(&sa, NULL, APR_INET, port, 0, mem_pool)) != APR_SUCCESS)
@@ -83,7 +81,6 @@ int server_run(int port, client_handler handle)
 
     }
     apr_pool_destroy(mem_pool);
-    apr_terminate();
     return 0;
 }
 
@@ -92,7 +89,6 @@ int error(apr_status_t stat)
     char errbuf[256];
     apr_strerror(stat, errbuf, sizeof(errbuf));
     printf("ERROR: %d, %s\n", stat, errbuf);
-    apr_terminate();
     return -1;
 }
 
@@ -121,5 +117,5 @@ static void* APR_THREAD_FUNC server_process_client(apr_thread_t *thd, void* data
             break;
         }
     }
-    return 0;
+    return (void*) apr_thread_exit(thd, 0);
 }

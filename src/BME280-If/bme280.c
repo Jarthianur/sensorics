@@ -99,6 +99,10 @@ uint8_t bme280_read_burst_tph()
     unpack_press();
     unpack_temp();
     unpack_humid();
+    bme280_compensate_temp();
+    bme280_compensate_press();
+    bme280_compensate_humid();
+
     return U8_SUCCESS;
 }
 
@@ -673,21 +677,18 @@ uint8_t bme280_compensate_humid()
 double bme280_temp()
 {
     NULL_CHECK
-    bme280_compensate_temp();
     return p_bme280->comp_temp;
 }
 
 double bme280_press()
 {
     NULL_CHECK
-    bme280_compensate_press();
     return p_bme280->comp_press;
 }
 
 double bme280_humid()
 {
     NULL_CHECK
-    bme280_compensate_humid();
     return p_bme280->comp_humid;
 }
 
