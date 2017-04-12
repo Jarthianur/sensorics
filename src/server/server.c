@@ -1,21 +1,53 @@
+/*
+ Copyright_License {
+
+ Copyright (C) 2017 Julian P. Becht
+ Author: Julian P. Becht
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License version 3
+ as published by the Free Software Foundation.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ }
+ */
+
 #include "server.h"
 #include <apr-1.0/apr.h>
 #include <apr-1.0/apr_errno.h>
-#include <apr-1.0/apr_general.h>
 #include <apr-1.0/apr_network_io.h>
-#include <apr-1.0/apr_pools.h>
 #include <apr-1.0/apr_thread_proc.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #define DEFAULT_SO_BACKLOG  (SOMAXCONN)
 #define BUFFSIZE            (8129)
+#define SYNC_TIME           (1)
+#define MAX_CLIENTS         (4)
 
-static void* APR_THREAD_FUNC server_process_client(apr_thread_t *thd, void *);
+/**
+ * Handler for processing clients.
+ */
+static void* APR_THREAD_FUNC process_client(apr_thread_t *thd, void *);
+/**
+ * Print error info.
+ */
 int error(apr_status_t stat);
 
+/**
+ * External run status
+ */
+extern int run_status;
 static client_handler handle_client = NULL;
 
-int server_run(int port, client_handler handle, apr_pool_t* parent)
+int32_t server_run(int port, client_handler handle, apr_pool_t* parent)
 {
     if (handle == NULL)
     {
@@ -25,6 +57,7 @@ int server_run(int port, client_handler handle, apr_pool_t* parent)
     {
         handle_client = handle;
     }
+
     apr_socket_t *so_listen;
     apr_pool_t *mem_pool;
     apr_status_t ret_stat;
@@ -36,6 +69,7 @@ int server_run(int port, client_handler handle, apr_pool_t* parent)
 
     if ((ret_stat = apr_sockaddr_info_get(&sa, NULL, APR_INET, port, 0, mem_pool)) != APR_SUCCESS)
     {
+        apr_pool_destroy(mem_pool);
         return error(ret_stat);
     }
 
@@ -43,6 +77,7 @@ int server_run(int port, client_handler handle, apr_pool_t* parent)
                                       mem_pool))
         != APR_SUCCESS)
     {
+        apr_pool_destroy(mem_pool);
         return error(ret_stat);
     }
 
@@ -52,34 +87,35 @@ int server_run(int port, client_handler handle, apr_pool_t* parent)
 
     if ((ret_stat = apr_socket_bind(so_listen, sa)) != APR_SUCCESS)
     {
+        apr_pool_destroy(mem_pool);
         return error(ret_stat);
     }
 
     if ((ret_stat = apr_socket_listen(so_listen, DEFAULT_SO_BACKLOG)) != APR_SUCCESS)
     {
+        apr_pool_destroy(mem_pool);
         return error(ret_stat);
     }
 
-    while (1)
+    while (run_status == 1)
     {
         apr_socket_t *ns;
 
         if ((ret_stat = apr_socket_accept(&ns, so_listen, mem_pool)) != APR_SUCCESS)
         {
-            return error(ret_stat);
+            error(ret_stat);
+            continue;
         }
         apr_socket_opt_set(ns, APR_SO_NONBLOCK, 0);
         apr_socket_timeout_set(ns, -1);
         apr_thread_t *thd_obj;
 
-        if ((ret_stat = apr_thread_create(&thd_obj, NULL, server_process_client, ns,
-                                          mem_pool))
-            != APR_SUCCESS)
+        if ((ret_stat = apr_thread_create(&thd_obj, NULL, process_client, ns, mem_pool)) != APR_SUCCESS)
         {
-            printf("Error Creating new Thread\n");
+            error(ret_stat);
         }
-
     }
+
     apr_pool_destroy(mem_pool);
     return 0;
 }
@@ -92,30 +128,23 @@ int error(apr_status_t stat)
     return -1;
 }
 
-static void* APR_THREAD_FUNC server_process_client(apr_thread_t *thd, void* data)
+static void* APR_THREAD_FUNC process_client(apr_thread_t *thd, void* data)
 {
     apr_socket_t * sock = (apr_socket_t*) data;
+    char buf[BUFFSIZE];
 
-    while (1)
+    while (run_status == 1)
     {
-        char buf[BUFFSIZE];
-        apr_size_t len = sizeof(buf) - 1;
-        apr_status_t rv = apr_socket_recv(sock, buf, &len);
-
-        if (rv != APR_EOF && len > 0)
+        apr_size_t len = handle_client(buf, sizeof(buf));
+        apr_socket_send(sock, buf, &len);
+        if (len == 0)
         {
-            buf[len] = '\0';
-            printf("Read: %s", buf);
-            fflush(stdout);
-            len = handle_client(buf, sizeof(buf));
-            apr_socket_send(sock, buf, &len);
-        }
-        else
-        {
-            printf("Socket Closed\n");
-            apr_socket_close(sock);
             break;
         }
+        sleep(SYNC_TIME);
     }
+    apr_socket_shutdown(sock, APR_SHUTDOWN_READWRITE);
+    apr_socket_close(sock);
+
     return (void*) apr_thread_exit(thd, 0);
 }
