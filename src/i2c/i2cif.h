@@ -1,9 +1,9 @@
-#ifndef BME280_IF_SRC_I2CIF_H_
-#define BME280_IF_SRC_I2CIF_H_
+#ifndef SRC_I2C_I2CIF_H_
+#define SRC_I2C_I2CIF_H_
 
 #define I2C_API
 
-#define ERROR (-1)
+#define ERROR   (-1)
 #define SUCCESS (0)
 
 #include <stdint.h>
@@ -39,4 +39,4 @@ int32_t i2c_read_reg(int fd, uint8_t reg, uint8_t* data);
  */
 int32_t i2c_read_block(int fd, uint8_t reg, size_t bytes, uint8_t* data);
 
-#endif /* BME280_IF_SRC_I2CIF_H_ */
+#endif /* SRC_I2C_I2CIF_H_ */

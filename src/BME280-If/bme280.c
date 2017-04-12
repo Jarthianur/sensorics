@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "bme280.h"
-#include "i2cif.h"
+#include "../i2c/i2cif.h"
 #include <stddef.h>
 #include <unistd.h>
 #include <time.h>

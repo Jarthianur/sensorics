@@ -1,5 +1,5 @@
-#ifndef BME280_IF_SRC_BME280_H_
-#define BME280_IF_SRC_BME280_H_
+#ifndef SRC_BME280_IF_BME280_H_
+#define SRC_BME280_IF_BME280_H_
 
 #include <stdint.h>
 
@@ -264,4 +264,4 @@ uint8_t bme280_soft_rst();
  */
 void bme280_delay(uint8_t ms);
 
-#endif /* BME280_IF_SRC_BME280_H_ */
+#endif /* SRC_BME280_IF_BME280_H_ */
