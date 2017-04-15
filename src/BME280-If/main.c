@@ -61,7 +61,7 @@ int run_status = 1;
 /**
  * Mutex to gain threadsafety for temp, press, humid data.
  */
-apr_thread_mutex_t* mutex;
+apr_thread_mutex_t* meas_mutex;
 
 double temperature = 0.0;
 double pressure = 0.0;
@@ -110,7 +110,7 @@ int main(int argc, char** argv)
 
     apr_pool_create(&mem_pool, NULL);
     apr_threadattr_create(&thd_attr, mem_pool);
-    apr_thread_mutex_create(&mutex, APR_THREAD_MUTEX_UNNESTED, mem_pool);
+    apr_thread_mutex_create(&meas_mutex, APR_THREAD_MUTEX_UNNESTED, mem_pool);
 
     // Spawn poll thread
     if ((ret_stat = apr_thread_create(&thd_obj, NULL, poll_bme280, 0, mem_pool)) != APR_SUCCESS)
@@ -122,6 +122,7 @@ int main(int argc, char** argv)
 
     // De-initialize
     apr_thread_join(&ret_stat, thd_obj);
+    apr_thread_mutex_destroy(meas_mutex);
     apr_pool_destroy(mem_pool);
     apr_terminate();
     bme280_set_powermode(BME280_SLEEP_MODE);
@@ -147,10 +148,10 @@ int32_t checksum(const char* sentence, size_t size)
 size_t handle(char* buf, size_t len)
 {
     int32_t rc = 0;
-    apr_thread_mutex_lock(mutex);
+    apr_thread_mutex_lock(meas_mutex);
     rc = snprintf(buf, len, "$WIMDA,%.2lf,I,%.3lf,B,%.1lf,C,,,%.1lf,,,,,,,,,,,*",
                   pressure * 0.02953, pressure, temperature, humidity);
-    apr_thread_mutex_unlock(mutex);
+    apr_thread_mutex_unlock(meas_mutex);
     int32_t csum = checksum(buf, rc);
     char end[8];
     rc += snprintf(end, 8, "%02x\r\n", csum);
@@ -165,24 +166,25 @@ static void* APR_THREAD_FUNC poll_bme280(apr_thread_t *thd, void * data)
 {
     while (run_status == 1)
     {
-        apr_thread_mutex_lock(mutex);
+        apr_thread_mutex_lock(meas_mutex);
         if (bme280_read_burst_tph() == U8_ERROR)
         {
             printf("read from i2c failed\n");
-            apr_thread_mutex_unlock(mutex);
+            apr_thread_mutex_unlock(meas_mutex);
             break;
         }
         temperature = bme280_temp();
         pressure = bme280_press();
         humidity = bme280_humid();
-        apr_thread_mutex_unlock(mutex);
+        apr_thread_mutex_unlock(meas_mutex);
         sleep(SYNC_TIME);
     }
-    return (void*) apr_thread_exit(thd, 0);
+    return 0;
 }
 
 void handle_signal(int signo)
 {
     printf("caught signal: %d\n", signo);
     run_status = 0;
+    server_stop();
 }
