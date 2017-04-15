@@ -99,9 +99,6 @@ int main(int argc, char** argv)
 
     // Initialize routine
     apr_initialize();
-    apr_signal(SIGINT, handle_signal);
-    apr_signal(SIGKILL, handle_signal);
-    apr_signal(SIGPIPE, SIG_IGN);
 
     apr_status_t ret_stat;
     apr_thread_t *thd_obj;
@@ -117,6 +114,12 @@ int main(int argc, char** argv)
     {
         printf("create thread failed\n");
     }
+
+    // register signal handlers
+    apr_signal(SIGINT, handle_signal);
+    apr_signal(SIGKILL, handle_signal);
+    apr_signal(SIGPIPE, SIG_IGN);
+
     // Run server
     server_run(SERVER_DEFAULT_PORT, handle, mem_pool);
 

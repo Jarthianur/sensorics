@@ -34,6 +34,8 @@
 #define BUFFSIZE            (8129)
 #define SYNC_TIME           (1)
 #define MAX_CLIENTS         (4)
+// microsec
+#define CONN_TIMEOUT        (20000000)
 
 /**
  * Handler for processing clients.
@@ -106,28 +108,22 @@ int32_t server_run(int port, client_handler handle, apr_pool_t* parent)
 
     while (run_status == 1)
     {
-        apr_thread_mutex_lock(cond_mutex);
+        apr_socket_t *ns;
+        if ((ret_stat = apr_socket_accept(&ns, so_listen, mem_pool)) != APR_SUCCESS)
+        {
+            error(ret_stat);
+            continue;
+        }
+
         if (clients == MAX_CLIENTS)
         {
-            apr_thread_cond_wait(close_cond, cond_mutex);
+            apr_socket_shutdown(ns, APR_SHUTDOWN_READWRITE);
+            apr_socket_close(ns);
+            continue;
         }
-        apr_thread_mutex_unlock(cond_mutex);
 
-        apr_socket_t *ns;
-        if (run_status == 1)
-        {
-            if ((ret_stat = apr_socket_accept(&ns, so_listen, mem_pool)) != APR_SUCCESS)
-            {
-                error(ret_stat);
-                continue;
-            }
-        }
-        else
-        {
-            break;
-        }
         apr_socket_opt_set(ns, APR_SO_NONBLOCK, 0);
-        apr_socket_timeout_set(ns, -1);
+        apr_socket_timeout_set(ns, CONN_TIMEOUT);
         apr_thread_t *thd_obj;
 
         apr_thread_mutex_lock(cond_mutex);
@@ -205,9 +201,6 @@ static void* APR_THREAD_FUNC process_client(apr_thread_t *thd, void* data)
 void server_stop()
 {
     run_status = 0;
-    apr_thread_mutex_lock(cond_mutex);
-    apr_thread_cond_signal(close_cond);
-    apr_thread_mutex_unlock(cond_mutex);
 
     apr_sockaddr_t *sa;
     apr_socket_t *s;
