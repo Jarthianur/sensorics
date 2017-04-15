@@ -215,7 +215,7 @@ void server_stop()
     apr_pool_create(&mem_pool, NULL);
 
     apr_sockaddr_info_get(&sa, "localhost", APR_INET, server_port, 0, mem_pool);
-    apr_socket_create(&s, sa->family, SOCK_STREAM, mem_pool);
+    apr_socket_create(&s, sa->family, SOCK_STREAM, 0, mem_pool);
     apr_socket_connect(s, sa);
     apr_pool_destroy(mem_pool);
     apr_socket_close(s);
