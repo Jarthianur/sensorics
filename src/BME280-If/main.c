@@ -152,8 +152,8 @@ size_t handle(char* buf, size_t len)
 {
     int32_t rc = 0;
     apr_thread_mutex_lock(meas_mutex);
-    rc = snprintf(buf, len, "$WIMDA,%.2lf,I,%.3lf,B,%.1lf,C,,,%.1lf,,,,,,,,,,,*",
-                  pressure * 0.02953, pressure, temperature, humidity);
+    rc = snprintf(buf, len, "$WIMDA,%.2lf,I,%.4lf,B,%.1lf,C,,,%.1lf,,,,,,,,,,,*",
+                  pressure * 0.02953, pressure / 1000.0, temperature, humidity);
     apr_thread_mutex_unlock(meas_mutex);
     int32_t csum = checksum(buf, rc);
     char end[8];
