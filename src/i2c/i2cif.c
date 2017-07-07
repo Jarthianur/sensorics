@@ -22,7 +22,6 @@
 #include "i2cif.h"
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
-#include <i2c/smbus.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -49,7 +48,6 @@ void i2c_close_dev(int fd)
 
 int32_t i2c_write_reg(int fd, uint8_t reg, uint8_t data)
 {
-    //uint8_t args[2] = { reg, data };
     if (i2c_smbus_write_byte_data(fd, reg, data) < 0)
     {
         return ERROR;
@@ -62,13 +60,6 @@ int32_t i2c_write_reg(int fd, uint8_t reg, uint8_t data)
 
 int32_t i2c_write_block(int fd, uint8_t reg, size_t bytes, uint8_t* data)
 {
-    /*uint8_t args[bytes + 1];
-     memset(args, 0, (bytes + 1) * sizeof(uint8_t));
-     args[0] = reg;
-     for (size_t i = 0; i < bytes; ++i)
-     {
-     args[i + 1] = data[i];
-     }*/
     if (i2c_smbus_write_i2c_block_data(fd, reg, bytes, data) < 0)
     {
         return ERROR;
