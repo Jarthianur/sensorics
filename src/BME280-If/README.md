@@ -3,5 +3,10 @@
 Serve data, gathered from a BME280 sensor, on a more abstract interface, like sockets.
 Output format is NMEA (WIMDA).
 
-Set *INCLUDE_PATH* in *install.sh* to where i2c-tools is downloaded from github.
-Execute `./install.sh`.
+## Install
+
+```bash
+sudo apt-get update
+sudo apt-get install libi2c-dev i2c-tools
+./install.sh
+```
