@@ -32,7 +32,6 @@
 
 #define DEFAULT_SO_BACKLOG  (SOMAXCONN)
 #define BUFFSIZE            (8129)
-#define SYNC_TIME           (1)
 #define MAX_CLIENTS         (4)
 // microsec
 #define CONN_TIMEOUT        (20000000)
@@ -183,7 +182,6 @@ static void* APR_THREAD_FUNC process_client(apr_thread_t *thd, void* data)
         {
             break;
         }
-        sleep(SYNC_TIME);
     }
     apr_socket_shutdown(sock, APR_SHUTDOWN_READWRITE);
     apr_socket_close(sock);

@@ -66,11 +66,12 @@ double temperature = 0.0;
 double pressure = 0.0;
 double humidity = 0.0;
 
+
+uint32_t interval = 1;
+
 int main(int argc, char** argv)
 {
     uint16_t port = 0;
-    uint32_t interval = 1;
-
     int32_t arg;
     for (arg = 1; arg < argc; ++arg)
     {
@@ -165,6 +166,7 @@ int32_t checksum(const char* sentence, size_t size)
 
 size_t handle(char* buf, size_t len)
 {
+    sleep(interval);
     int32_t rc = 0;
     apr_thread_mutex_lock(meas_mutex);
     if ((rc = snprintf(buf, len, "$WIMDA,%.2lf,I,%.4lf,B,%.1lf,C,,,%.1lf,,,,,,,,,,,*",
@@ -189,9 +191,8 @@ size_t handle(char* buf, size_t len)
     return 0;
 }
 
-static void* APR_THREAD_FUNC poll_bme280(apr_thread_t *thd, void * interval)
+static void* APR_THREAD_FUNC poll_bme280(apr_thread_t *thd, void * data)
 {
-    uint32_t t = *((uint32_t*) interval);
     while (run_status == 1)
     {
         apr_thread_mutex_lock(meas_mutex);
@@ -205,7 +206,7 @@ static void* APR_THREAD_FUNC poll_bme280(apr_thread_t *thd, void * interval)
         pressure = bme280_press();
         humidity = bme280_humid();
         apr_thread_mutex_unlock(meas_mutex);
-        sleep(t);
+        sleep(interval);
     }
     return 0;
 }
