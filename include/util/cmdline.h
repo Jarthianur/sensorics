@@ -19,16 +19,30 @@
  }
  */
 
-#ifndef SRC_UTIL_LOGGING_H_
-#define SRC_UTIL_LOGGING_H_
+#pragma once
 
-#include <stdio.h>
+#include <errno.h>
+#include <limits.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-#ifndef LOG_COMPONENT
-#define LOG_COMPONENT ""
-#endif
+uint16_t parse_port(const char* str, uint16_t def)
+{
+    uint64_t p = strtoul(str, NULL, 10);
+    if (errno == ERANGE || p > UINT16_MAX)
+    {
+        return def;
+    }
+    return p;
+}
 
-#define LOG(MSG) printf(LOG_COMPONENT "%s\n", MSG)
-#define LOGF(FMT, ...) printf(LOG_COMPONENT FMT, __VA_ARGS__)
-
-#endif // SRC_UTIL_LOGGING_H_
+uint32_t parse_interval(const char* str, uint32_t def)
+{
+    uint64_t t = strtoul(str, NULL, 10);
+    if (errno == ERANGE || t > UINT32_MAX)
+    {
+        return def;
+    }
+    return t;
+}

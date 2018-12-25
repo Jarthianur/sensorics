@@ -19,8 +19,7 @@
  }
  */
 
-#ifndef SRC_I2C_I2CIF_H_
-#define SRC_I2C_I2CIF_H_
+#pragma once
 
 #define I2C_API
 
@@ -59,5 +58,3 @@ int32_t i2c_read_reg(int fd, uint8_t reg, uint8_t* data);
  * @return ERROR on any error, else SUCCESS
  */
 int32_t i2c_read_block(int fd, uint8_t reg, size_t bytes, uint8_t* data);
-
-#endif /* SRC_I2C_I2CIF_H_ */

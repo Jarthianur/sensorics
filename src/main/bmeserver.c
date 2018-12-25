@@ -19,13 +19,6 @@
  }
  */
 
-#include <apr-1/apr.h>
-#include <apr-1/apr_errno.h>
-#include <apr-1/apr_general.h>
-#include <apr-1/apr_pools.h>
-#include <apr-1/apr_signal.h>
-#include <apr-1/apr_thread_mutex.h>
-#include <apr-1/apr_thread_proc.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -33,10 +26,18 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../server/server.h"
-#include "../util/cmdline.h"
-#include "../util/logging.h"
-#include "bme280.h"
+#include <apr.h>
+#include <apr_errno.h>
+#include <apr_general.h>
+#include <apr_pools.h>
+#include <apr_signal.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
+
+#include "bme280/bme280.h"
+#include "server/server.h"
+#include "util/cmdline.h"
+#include "util/logging.h"
 
 /**
  * Produce WIMDA sentence and store into buff.
@@ -45,7 +46,7 @@ size_t handle(char* buff, size_t len);
 /**
  * Handler to poll temp, press, humid from bme280 sensor.
  */
-static void* APR_THREAD_FUNC poll_bme280(apr_thread_t *thd, void *);
+static void* APR_THREAD_FUNC poll_bme280(apr_thread_t* thd, void*);
 /**
  * Exit signal handler.
  */
@@ -64,34 +65,34 @@ int run_status = 1;
 apr_thread_mutex_t* meas_mutex;
 
 double temperature = 0.0;
-double pressure = 0.0;
-double humidity = 0.0;
+double pressure    = 0.0;
+double humidity    = 0.0;
 
 uint32_t interval = 1;
 
 int main(int argc, char** argv)
 {
     uint16_t port = 0;
-    int32_t arg;
+    int32_t  arg;
     for (arg = 1; arg < argc; ++arg)
     {
-        if (strcmp(argv[arg],"-p") == 0 && arg < argc - 1)
+        if (strcmp(argv[arg], "-p") == 0 && arg < argc - 1)
         {
-            port = parse_port(argv[arg+1], SERVER_DEFAULT_PORT);
+            port = parse_port(argv[arg + 1], SERVER_DEFAULT_PORT);
         }
-        else if (strcmp(argv[arg],"-t") == 0 && arg < argc - 1)
+        else if (strcmp(argv[arg], "-t") == 0 && arg < argc - 1)
         {
-            interval = parse_interval(argv[arg+1], 1);
+            interval = parse_interval(argv[arg + 1], 1);
         }
     }
     LOGF("Using interval: %u\n", interval);
 
     // Initialize BME280
-    uint8_t rc = 0;
-    bme280 bme;
+    uint8_t            rc = 0;
+    bme280             bme;
     bme280_calib_table ct;
     bme280_uncomp_meas ucm;
-    bme.p_calib = &ct;
+    bme.p_calib       = &ct;
     bme.p_uncomp_meas = &ucm;
 
     if (bme280_init("/dev/i2c-1", &bme) == U8_ERROR)
@@ -117,17 +118,18 @@ int main(int argc, char** argv)
     // Initialize routine
     apr_initialize();
 
-    apr_status_t ret_stat;
-    apr_thread_t *thd_obj;
-    apr_pool_t *mem_pool;
-    apr_threadattr_t *thd_attr;
+    apr_status_t      ret_stat;
+    apr_thread_t*     thd_obj;
+    apr_pool_t*       mem_pool;
+    apr_threadattr_t* thd_attr;
 
     apr_pool_create(&mem_pool, NULL);
     apr_threadattr_create(&thd_attr, mem_pool);
     apr_thread_mutex_create(&meas_mutex, APR_THREAD_MUTEX_UNNESTED, mem_pool);
 
     // Spawn poll thread
-    if ((ret_stat = apr_thread_create(&thd_obj, NULL, poll_bme280, &interval, mem_pool)) != APR_SUCCESS)
+    if ((ret_stat = apr_thread_create(&thd_obj, NULL, poll_bme280, &interval, mem_pool)) !=
+        APR_SUCCESS)
     {
         printf("create thread failed\n");
     }
@@ -157,7 +159,7 @@ int main(int argc, char** argv)
 int32_t checksum(const char* sentence, size_t size)
 {
     int32_t csum = 0;
-    size_t i = 1; // $ in nmea str not included
+    size_t  i    = 1;  // $ in nmea str not included
     while (sentence[i] != '*' && sentence[i] != '\0' && i < size)
     {
         csum ^= (int32_t) sentence[i++];
@@ -171,14 +173,14 @@ size_t handle(char* buf, size_t len)
     int32_t rc = 0;
     apr_thread_mutex_lock(meas_mutex);
     if ((rc = snprintf(buf, len, "$WIMDA,%.2lf,I,%.4lf,B,%.1lf,C,,,%.1lf,,,,,,,,,,,*",
-                  pressure * 0.02953, pressure / 1000.0, temperature, humidity)) < 0)
+                       pressure * 0.02953, pressure / 1000.0, temperature, humidity)) < 0)
     {
         return 0;
     }
     apr_thread_mutex_unlock(meas_mutex);
     int32_t csum = checksum(buf, rc);
-    char end[8];
-    size_t l = rc;
+    char    end[8];
+    size_t  l = rc;
     if ((rc = snprintf(end, 8, "%02x\r\n", csum)) < 0)
     {
         return 0;
@@ -192,7 +194,7 @@ size_t handle(char* buf, size_t len)
     return 0;
 }
 
-static void* APR_THREAD_FUNC poll_bme280(apr_thread_t *thd, void * data)
+static void* APR_THREAD_FUNC poll_bme280(apr_thread_t* thd, void* data)
 {
     while (run_status == 1)
     {
@@ -204,8 +206,8 @@ static void* APR_THREAD_FUNC poll_bme280(apr_thread_t *thd, void * data)
             break;
         }
         temperature = bme280_temp();
-        pressure = bme280_press();
-        humidity = bme280_humid();
+        pressure    = bme280_press();
+        humidity    = bme280_humid();
         apr_thread_mutex_unlock(meas_mutex);
         sleep(interval);
     }

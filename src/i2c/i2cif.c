@@ -19,12 +19,13 @@
  }
  */
 
-#include "i2cif.h"
-#include <linux/i2c-dev.h>
-#include <sys/ioctl.h>
+#include "i2c/i2cif.h"
+
 #include <fcntl.h>
-#include <unistd.h>
+#include <linux/i2c-dev.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 int32_t i2c_init_dev(const char* dev, uint8_t addr)
 {
@@ -90,4 +91,3 @@ int32_t i2c_read_block(int fd, uint8_t reg, size_t bytes, uint8_t* data)
     }
     return SUCCESS;
 }
-

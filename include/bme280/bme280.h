@@ -10,8 +10,7 @@
  GNU General Public License for more details.
  */
 
-#ifndef SRC_BME280_IF_BME280_H_
-#define SRC_BME280_IF_BME280_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -259,5 +258,3 @@ uint8_t bme280_soft_rst();
  * Wait amount of ms doing nothing.
  */
 void bme280_delay(uint8_t ms);
-
-#endif /* SRC_BME280_IF_BME280_H_ */

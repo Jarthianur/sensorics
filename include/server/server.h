@@ -19,11 +19,10 @@
  }
  */
 
-#ifndef SRC_SERVER_SERVER_H_
-#define SRC_SERVER_SERVER_H_
+#pragma once
 
-#include <apr-1/apr_general.h>
-#include <apr-1/apr_pools.h>
+#include <apr_general.h>
+#include <apr_pools.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -51,5 +50,3 @@ typedef size_t (*client_handler)(char*, size_t);
 int32_t server_run(int port, client_handler handle, apr_pool_t* parent);
 
 void server_stop();
-
-#endif /* SRC_SERVER_SERVER_H_ */
