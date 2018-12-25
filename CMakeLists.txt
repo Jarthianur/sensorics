@@ -13,4 +13,4 @@ set(bme_sources ${CMAKE_SOURCE_DIR}/src/main/bmeserver.c ${CMAKE_SOURCE_DIR}/src
 add_executable(bmeserver ${bme_sources})
 set_target_properties(bmeserver PROPERTIES COMPILE_FLAGS "${APR_COMPILE_FLAGS} -Wall -Wextra -Werror")
 target_include_directories(bmeserver PUBLIC ${CMAKE_SOURCE_DIR}/include ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR})
-target_link_libraries(bmeserver PUBLIC ${APR} ${APRUTIL} Threads::Threads)
+target_link_libraries(bmeserver PUBLIC ${APR_LIBRARIES} ${APRUTIL_LIBRARIES} Threads::Threads)
