@@ -20,24 +20,9 @@
 
 #include "i2c/i2cif.h"
 
-/**
- * Unpack pressure from uncomp struct.
- */
-uint8_t unpack_press();
-
-/**
- * Unpack temperature from uncomp struct.
- */
-uint8_t unpack_temp();
-
-/**
- * Unpack humidity from uncomp struct.
- */
-uint8_t unpack_humid();
-
-/**
- * Bit slicing
- */
+void    unpack_press(bme280*);
+void    unpack_temp(bme280*);
+void    unpack_humid(bme280*);
 uint8_t set_bit_slice(uint8_t regvar, uint8_t mask, uint8_t pos, uint8_t val);
 uint8_t get_bit_slice(uint8_t regvar, uint8_t mask, uint8_t pos);
 
@@ -103,9 +88,9 @@ uint8_t BME280_read_burst_tph(bme280* inst)
     meas->txsb = buff[5];
     meas->hmsb = buff[6];
     meas->hlsb = buff[7];
-    unpack_press();
-    unpack_temp();
-    unpack_humid();
+    unpack_press(inst);
+    unpack_temp(inst);
+    unpack_humid(inst);
     BME280_compensate_temp(inst);
     BME280_compensate_press(inst);
     BME280_compensate_humid(inst);
@@ -124,7 +109,8 @@ uint8_t BME280_read_temp(bme280* inst)
     meas->tmsb = buff[0];
     meas->tlsb = buff[1];
     meas->txsb = buff[2];
-    return unpack_temp();
+    unpack_temp(inst);
+    return U8_SUCCESS;
 }
 
 uint8_t BME280_read_press(bme280* inst)
@@ -138,7 +124,8 @@ uint8_t BME280_read_press(bme280* inst)
     meas->pmsb = buff[0];
     meas->plsb = buff[1];
     meas->pxsb = buff[2];
-    return unpack_press();
+    unpack_press(inst);
+    return U8_SUCCESS;
 }
 
 uint8_t BME280_read_humid(bme280* inst)
@@ -151,7 +138,8 @@ uint8_t BME280_read_humid(bme280* inst)
     }
     meas->hmsb = buff[0];
     meas->hlsb = buff[1];
-    return unpack_humid();
+    unpack_humid(inst);
+    return U8_SUCCESS;
 }
 
 uint8_t BME280_set_powermode(bme280* inst, uint8_t mode)
@@ -555,27 +543,24 @@ void BME280_delay(uint8_t ms)
     nanosleep(&tv, &tvr);
 }
 
-uint8_t unpack_press(bme280* inst)
+void unpack_press(bme280* inst)
 {
     bme280_uncomp_meas* meas = &inst->p_uncomp_meas;
     meas->pressure = (int32_t)((((uint32_t) meas->pmsb) << 12) | (((uint32_t) meas->plsb) << 4) |
                                ((uint32_t) meas->pxsb >> 4));
-    return U8_SUCCESS;
 }
 
-uint8_t unpack_temp(bme280* inst)
+void unpack_temp(bme280* inst)
 {
     bme280_uncomp_meas* meas = &inst->p_uncomp_meas;
     meas->temperature = (int32_t)((((uint32_t) meas->tmsb) << 12) | (((uint32_t) meas->tlsb) << 4) |
                                   ((uint32_t) meas->txsb >> 4));
-    return U8_SUCCESS;
 }
 
-uint8_t unpack_humid(bme280* inst)
+void unpack_humid(bme280* inst)
 {
     bme280_uncomp_meas* meas = &inst->p_uncomp_meas;
     meas->humidity           = (int32_t)((((uint32_t) meas->hmsb) << 8) | ((uint32_t) meas->hlsb));
-    return U8_SUCCESS;
 }
 
 uint8_t set_bit_slice(uint8_t regvar, uint8_t mask, uint8_t pos, uint8_t val)
