@@ -127,22 +127,22 @@ typedef struct
  */
 typedef struct
 {
-    int                 fd;
-    uint8_t             buffer[32];
-    bme280_calib_table* p_calib;
-    bme280_uncomp_meas* p_uncomp_meas;
-    uint8_t             power_mode;
-    uint8_t             filter;
-    uint8_t             standby_durn;
-    uint8_t             ovrsmpl_temp;
-    uint8_t             ovrsmpl_press;
-    uint8_t             ovrsmpl_humid;
-    double              comp_temp;
-    double              comp_press;
-    double              comp_humid;
-    uint8_t             ctrl_humid_reg;
-    uint8_t             ctrl_meas_reg;
-    uint8_t             config_reg;
+    int                fd;
+    uint8_t            buffer[32];
+    bme280_calib_table p_calib;
+    bme280_uncomp_meas p_uncomp_meas;
+    uint8_t            power_mode;
+    uint8_t            filter;
+    uint8_t            standby_durn;
+    uint8_t            ovrsmpl_temp;
+    uint8_t            ovrsmpl_press;
+    uint8_t            ovrsmpl_humid;
+    double             comp_temp;
+    double             comp_press;
+    double             comp_humid;
+    uint8_t            ctrl_humid_reg;
+    uint8_t            ctrl_meas_reg;
+    uint8_t            config_reg;
 
 } bme280;
 
@@ -157,128 +157,128 @@ uint8_t BME280_init(const char* dev, bme280* inst);
  * Close the bme280.
  * IF SO THIS FUNCTION MUST BE CALLED AT LAST!
  */
-uint8_t BME280_deinit();
+void BME280_deinit(bme280* inst);
 
 /**
  * Read calibration table.
  */
-uint8_t BME280_read_calib();
+uint8_t BME280_read_calib(bme280* inst);
 
 /**
  * Read not-compensated temperature, pressure
  * and humidity all in once (burst).
  */
-uint8_t BME280_read_burst_tph();
+uint8_t BME280_read_burst_tph(bme280* inst);
 
 /**
  * Read not-compensated temperature.
  */
-uint8_t BME280_read_temp();
+uint8_t BME280_read_temp(bme280* inst);
 
 /**
  * Read not-compensated pressure.
  */
-uint8_t BME280_read_press();
+uint8_t BME280_read_press(bme280* inst);
 
 /**
  * Read not-compensated humidity.
  */
-uint8_t BME280_read_humid();
+uint8_t BME280_read_humid(bme280* inst);
 
 /**
  * Set power mode.
  */
-uint8_t BME280_set_powermode(uint8_t mode);
+uint8_t BME280_set_powermode(bme280* inst, uint8_t mode);
 
 /**
  * Get power mode.
  */
-uint8_t BME280_get_powermode();
+uint8_t BME280_get_powermode(bme280* inst);
 
 /**
  * Set temperature oversample rate.
  */
-uint8_t BME280_set_temp_oversample(uint8_t rate);
+uint8_t BME280_set_temp_oversample(bme280* inst, uint8_t rate);
 
 /**
  * Get temperature oversample rate.
  */
-uint8_t BME280_get_temp_oversample();
+uint8_t BME280_get_temp_oversample(bme280* inst);
 
 /**
  * Set pressure oversample rate.
  */
-uint8_t BME280_set_press_oversample(uint8_t rate);
+uint8_t BME280_set_press_oversample(bme280* inst, uint8_t rate);
 
 /**
  * Get pressure oversample rate.
  */
-uint8_t BME280_get_press_oversample();
+uint8_t BME280_get_press_oversample(bme280* inst);
 
 /**
  * Set humidity oversample rate.
  */
-uint8_t BME280_set_humid_oversample(uint8_t rate);
+uint8_t BME280_set_humid_oversample(bme280* inst, uint8_t rate);
 
 /**
  * Get humidity oversample rate.
  */
-uint8_t BME280_get_humid_oversample();
+uint8_t BME280_get_humid_oversample(bme280* inst);
 
 /**
  * Set standby duration.
  */
-uint8_t BME280_set_standby_durn(uint8_t ms);
+uint8_t BME280_set_standby_durn(bme280* inst, uint8_t ms);
 
 /**
  * Get standby duration.
  */
-uint8_t BME280_get_standby_durn();
+uint8_t BME280_get_standby_durn(bme280* inst);
 
 /**
  * Set filter coefficient.
  */
-uint8_t BME280_set_filter(uint8_t coef);
+uint8_t BME280_set_filter(bme280* inst, uint8_t coef);
 
 /**
  * Get filter coefficient.
  */
-uint8_t BME280_get_filter();
+uint8_t BME280_get_filter(bme280* inst);
 
 /**
  * Compensate temperature.
  */
-uint8_t BME280_compensate_temp();
+uint8_t BME280_compensate_temp(bme280* inst);
 
 /**
  * Compensate pressure.
  */
-uint8_t BME280_compensate_press();
+uint8_t BME280_compensate_press(bme280* inst);
 
 /**
  * Compensate humidity.
  */
-uint8_t BME280_compensate_humid();
+uint8_t BME280_compensate_humid(bme280* inst);
 
 /**
  * Get compensated temperature as double.
  */
-double BME280_temp();
+double BME280_temp(bme280* inst);
 
 /**
  * Get compensated pressure as double.
  */
-double BME280_press();
+double BME280_press(bme280* inst);
 
 /**
  * Get compensated humidity as double.
  */
-double BME280_humid();
+double BME280_humid(bme280* inst);
 
 /**
  * Perform a soft reset.
  */
-uint8_t BME280_soft_rst();
+uint8_t BME280_soft_rst(bme280* inst);
 
 /**
  * Wait amount of ms doing nothing.

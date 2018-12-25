@@ -89,24 +89,20 @@ int main(int argc, char** argv)
     LOGF("Using interval: %u", interval);
 
     // Initialize BME280
-    uint8_t            rc = 0;
-    bme280             bme;
-    bme280_calib_table ct;
-    bme280_uncomp_meas ucm;
-    bme.p_calib       = &ct;
-    bme.p_uncomp_meas = &ucm;
+    uint8_t rc = 0;
+    bme280  bme;
 
     if (BME280_init("/dev/i2c-1", &bme) == U8_ERROR)
     {
         printf("init failed\n");
         return 1;
     }
-    rc = BME280_set_powermode(BME280_NORMAL_MODE);
-    rc = BME280_set_humid_oversample(BME280_OVERSAMP_1X);
-    rc = BME280_set_temp_oversample(BME280_OVERSAMP_1X);
-    rc = BME280_set_press_oversample(BME280_OVERSAMP_1X);
-    rc = BME280_set_standby_durn(BME280_STANDBY_TIME_500_MS);
-    rc = BME280_set_filter(BME280_FILTER_COEFF_OFF);
+    rc |= BME280_set_powermode(&bme, BME280_NORMAL_MODE);
+    rc |= BME280_set_humid_oversample(&bme, BME280_OVERSAMP_1X);
+    rc |= BME280_set_temp_oversample(&bme, BME280_OVERSAMP_1X);
+    rc |= BME280_set_press_oversample(&bme, BME280_OVERSAMP_1X);
+    rc |= BME280_set_standby_durn(&bme, BME280_STANDBY_TIME_500_MS);
+    rc |= BME280_set_filter(&bme, BME280_FILTER_COEFF_OFF);
 
     if (rc != 0)
     {
@@ -129,8 +125,7 @@ int main(int argc, char** argv)
     apr_thread_mutex_create(&meas_mutex, APR_THREAD_MUTEX_UNNESTED, mem_pool);
 
     // Spawn poll thread
-    if ((ret_stat = apr_thread_create(&thd_obj, NULL, poll_bme280, &interval, mem_pool)) !=
-        APR_SUCCESS)
+    if ((ret_stat = apr_thread_create(&thd_obj, NULL, poll_bme280, &bme, mem_pool)) != APR_SUCCESS)
     {
         printf("create thread failed\n");
     }
@@ -148,9 +143,9 @@ int main(int argc, char** argv)
     apr_thread_mutex_destroy(meas_mutex);
     apr_pool_destroy(mem_pool);
     apr_terminate();
-    BME280_set_powermode(BME280_SLEEP_MODE);
+    BME280_set_powermode(&bme, BME280_SLEEP_MODE);
 
-    BME280_deinit();
+    BME280_deinit(&bme);
     return rc;
 }
 
@@ -195,20 +190,21 @@ size_t handle(char* buf, size_t len)
     return 0;
 }
 
-static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, _unused_ void* data)
+static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, void* data)
 {
+    bme280* bme = (bme280*) data;
     while (run_status == 1)
     {
         apr_thread_mutex_lock(meas_mutex);
-        if (BME280_read_burst_tph() == U8_ERROR)
+        if (BME280_read_burst_tph(bme) == U8_ERROR)
         {
             printf("read from i2c failed\n");
             apr_thread_mutex_unlock(meas_mutex);
             break;
         }
-        temperature = BME280_temp();
-        pressure    = BME280_press();
-        humidity    = BME280_humid();
+        temperature = BME280_temp(bme);
+        pressure    = BME280_press(bme);
+        humidity    = BME280_humid(bme);
         apr_thread_mutex_unlock(meas_mutex);
         sleep(interval);
     }
