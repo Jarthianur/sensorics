@@ -19,10 +19,4 @@
  }
  */
 
-#pragma once
-
-#include <stdint.h>
-
-uint16_t parse_port(const char* str, uint16_t def);
-
-uint32_t parse_interval(const char* str, uint32_t def);
+#include "util/logging.h"

@@ -19,10 +19,29 @@
  }
  */
 
-#pragma once
+#include "util/cmdline.h"
 
-#include <stdint.h>
+#include <errno.h>
+#include <limits.h>
+#include <stddef.h>
+#include <stdlib.h>
 
-uint16_t parse_port(const char* str, uint16_t def);
+uint16_t parse_port(const char* str, uint16_t def)
+{
+    uint64_t p = strtoul(str, NULL, 10);
+    if (errno == ERANGE || p > UINT16_MAX)
+    {
+        return def;
+    }
+    return p;
+}
 
-uint32_t parse_interval(const char* str, uint32_t def);
+uint32_t parse_interval(const char* str, uint32_t def)
+{
+    uint64_t t = strtoul(str, NULL, 10);
+    if (errno == ERANGE || t > UINT32_MAX)
+    {
+        return def;
+    }
+    return t;
+}
