@@ -22,8 +22,8 @@
 #ifndef SRC_SERVER_SERVER_H_
 #define SRC_SERVER_SERVER_H_
 
-#include <apr-1.0/apr_general.h>
-#include <apr-1.0/apr_pools.h>
+#include <apr-1/apr_general.h>
+#include <apr-1/apr_pools.h>
 #include <stddef.h>
 #include <stdint.h>
 

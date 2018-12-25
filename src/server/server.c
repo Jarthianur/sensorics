@@ -21,18 +21,17 @@
 
 #include "server.h"
 
-#include <apr-1.0/apr.h>
-#include <apr-1.0/apr_errno.h>
-#include <apr-1.0/apr_network_io.h>
-#include <apr-1.0/apr_thread_cond.h>
-#include <apr-1.0/apr_thread_mutex.h>
-#include <apr-1.0/apr_thread_proc.h>
+#include <apr-1/apr.h>
+#include <apr-1/apr_errno.h>
+#include <apr-1/apr_network_io.h>
+#include <apr-1/apr_thread_cond.h>
+#include <apr-1/apr_thread_mutex.h>
+#include <apr-1/apr_thread_proc.h>
 #include <stdio.h>
 #include <unistd.h>
 
 #define DEFAULT_SO_BACKLOG  (SOMAXCONN)
 #define BUFFSIZE            (8129)
-#define SYNC_TIME           (1)
 #define MAX_CLIENTS         (4)
 // microsec
 #define CONN_TIMEOUT        (20000000)
@@ -179,11 +178,10 @@ static void* APR_THREAD_FUNC process_client(apr_thread_t *thd, void* data)
     {
         apr_size_t len = handle_client(buf, sizeof(buf));
         apr_socket_send(sock, buf, &len);
-        if (len <= 0)
+        if (len == 0)
         {
             break;
         }
-        sleep(SYNC_TIME);
     }
     apr_socket_shutdown(sock, APR_SHUTDOWN_READWRITE);
     apr_socket_close(sock);
