@@ -31,6 +31,8 @@
 #include <apr_thread_mutex.h>
 #include <apr_thread_proc.h>
 
+#include "util/util.h"
+
 #define DEFAULT_SO_BACKLOG (SOMAXCONN)
 #define BUFFSIZE (8129)
 #define MAX_CLIENTS (4)
@@ -170,7 +172,7 @@ int error(apr_status_t stat)
     return -1;
 }
 
-static void* APR_THREAD_FUNC process_client(apr_thread_t* thd, void* data)
+static void* APR_THREAD_FUNC process_client(_unused_ apr_thread_t* thd, void* data)
 {
     apr_socket_t* sock = (apr_socket_t*) data;
     char          buf[BUFFSIZE];

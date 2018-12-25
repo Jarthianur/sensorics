@@ -38,6 +38,7 @@
 #include "server/server.h"
 #include "util/cmdline.h"
 #include "util/logging.h"
+#include "util/util.h"
 
 /**
  * Produce WIMDA sentence and store into buff.
@@ -194,7 +195,7 @@ size_t handle(char* buf, size_t len)
     return 0;
 }
 
-static void* APR_THREAD_FUNC poll_bme280(apr_thread_t* thd, void* data)
+static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, _unused_ void* data)
 {
     while (run_status == 1)
     {
