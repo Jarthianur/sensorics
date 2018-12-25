@@ -34,7 +34,8 @@
 #include <unistd.h>
 
 #include "../server/server.h"
-#include "../util/util.h"
+#include "../util/cmdline.h"
+#include "../util/logging.h"
 #include "bme280.h"
 
 /**
@@ -66,7 +67,6 @@ double temperature = 0.0;
 double pressure = 0.0;
 double humidity = 0.0;
 
-
 uint32_t interval = 1;
 
 int main(int argc, char** argv)
@@ -84,6 +84,7 @@ int main(int argc, char** argv)
             interval = parse_interval(argv[arg+1], 1);
         }
     }
+    LOGF("Using interval: %u\n", interval);
 
     // Initialize BME280
     uint8_t rc = 0;
