@@ -31,6 +31,6 @@ const char* LOG_get_time()
     struct tm* ti;
     time(&t);
     ti = localtime(&t);
-    snprintf(LOG_time_str, sizeof(LOG_time_str), "%s", asctime(ti));
+    strftime(LOG_time_str, sizeof(LOG_time_str), "%s", ti);
     return LOG_time_str;
 }
