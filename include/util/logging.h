@@ -24,9 +24,12 @@
 #include <stdio.h>
 
 #ifndef LOG_COMPONENT
-#define LOG_COMPONENT ""
+#    define LOG_COMPONENT ""
 #endif
 
-#define LOG(MSG) printf(LOG_COMPONENT "%s\n", MSG)
-#define LOGF(FMT, ...) printf(LOG_COMPONENT FMT, __VA_ARGS__)
+extern char LOG_time_str[32];
 
+const char* LOG_get_time();
+
+#define LOG(MSG) printf("%s [" LOG_COMPONENT "]:: %s\n", MSG, LOG_get_time())
+#define LOGF(FMT, ...) printf("%s [" LOG_COMPONENT "]:: " FMT "\n", LOG_get_time(), __VA_ARGS__)

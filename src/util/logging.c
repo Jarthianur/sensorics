@@ -20,3 +20,17 @@
  */
 
 #include "util/logging.h"
+
+#include <time.h>
+
+char LOG_time_str[32] = "";
+
+const char* LOG_get_time()
+{
+    time_t     t;
+    struct tm* ti;
+    time(&t);
+    ti = localtime(&t);
+    snprintf(LOG_time_str, sizeof(LOG_time_str), "%s", asctime(ti));
+    return LOG_time_str;
+}

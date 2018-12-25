@@ -27,69 +27,69 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-int32_t i2c_init_dev(const char* dev, uint8_t addr)
+int I2C_init_dev(const char* dev, uint8_t addr)
 {
     int fd;
     if ((fd = open(dev, O_RDWR)) < 0)
     {
-        return ERROR;
+        return -1;
     }
     if (ioctl(fd, I2C_SLAVE, addr) < 0)
     {
-        return ERROR;
+        return -1;
     }
     return fd;
 }
 
-void i2c_close_dev(int fd)
+void I2C_close_dev(int fd)
 {
     close(fd);
 }
 
-int32_t i2c_write_reg(int fd, uint8_t reg, uint8_t data)
+int32_t I2C_write_reg(int fd, uint8_t reg, uint8_t data)
 {
     if (i2c_smbus_write_byte_data(fd, reg, data) < 0)
     {
-        return ERROR;
+        return -1;
     }
     else
     {
-        return SUCCESS;
+        return 0;
     }
 }
 
-int32_t i2c_write_block(int fd, uint8_t reg, size_t bytes, uint8_t* data)
+int32_t I2C_write_block(int fd, uint8_t reg, size_t bytes, uint8_t* data)
 {
     if (i2c_smbus_write_i2c_block_data(fd, reg, bytes, data) < 0)
     {
-        return ERROR;
+        return -1;
     }
     else
     {
-        return SUCCESS;
+        return 0;
     }
 }
 
-int32_t i2c_read_reg(int fd, uint8_t reg, uint8_t* data)
+int32_t I2C_read_reg(int fd, uint8_t reg, uint8_t* data)
 {
     if (i2c_smbus_write_byte(fd, reg) < 0)
     {
-        return ERROR;
+        return -1;
     }
     int32_t v = i2c_smbus_read_byte(fd);
     if (v < 0)
     {
-        return ERROR;
+        return -1;
     }
     *data = v & 0x0FF;
-    return SUCCESS;
+    return 0;
 }
 
-int32_t i2c_read_block(int fd, uint8_t reg, size_t bytes, uint8_t* data)
+int32_t I2C_read_block(int fd, uint8_t reg, size_t bytes, uint8_t* data)
 {
     if (i2c_smbus_read_i2c_block_data(fd, reg, bytes, data) <= 0)
     {
-        return ERROR;
+        return -1;
     }
-    return SUCCESS;
+    return 0;
 }

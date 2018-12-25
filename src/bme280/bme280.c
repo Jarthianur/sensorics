@@ -50,31 +50,31 @@ uint8_t get_bit_slice(uint8_t regvar, uint8_t mask, uint8_t pos);
  */
 static bme280* p_bme280 = NULL;
 
-uint8_t bme280_init(const char* dev, bme280* inst)
+uint8_t BME280_init(const char* dev, bme280* inst)
 {
     p_bme280 = inst;
     NULL_CHECK
-    if ((p_bme280->fd = i2c_init_dev(dev, BME280_ADDRESS)) == ERROR)
+    if ((p_bme280->fd = I2C_init_dev(dev, BME280_ADDRESS)) == -1)
     {
         return U8_ERROR;
     }
-    return bme280_read_calib();
+    return BME280_read_calib();
 }
 
-uint8_t bme280_deinit()
+uint8_t BME280_deinit()
 {
     NULL_CHECK
-    i2c_close_dev(p_bme280->fd);
+    I2C_close_dev(p_bme280->fd);
     return U8_SUCCESS;
 }
 
-uint8_t bme280_read_calib()
+uint8_t BME280_read_calib()
 {
     NULL_CHECK
     uint8_t*            buff  = p_bme280->buffer;
     bme280_calib_table* calib = p_bme280->p_calib;
 
-    i2c_read_block(p_bme280->fd, BME280_REG_DIG_T1, 26, buff);
+    I2C_read_block(p_bme280->fd, BME280_REG_DIG_T1, 26, buff);
 
     calib->dig_T1 = (uint16_t)((((uint16_t)((uint8_t) buff[1])) << 8) | buff[0]);
     calib->dig_T2 = (int16_t)((((int16_t)((int8_t) buff[3])) << 8) | buff[2]);
@@ -90,7 +90,7 @@ uint8_t bme280_read_calib()
     calib->dig_P9 = (int16_t)((((int16_t)((int8_t) buff[23])) << 8) | buff[22]);
     calib->dig_H1 = buff[25];
 
-    i2c_read_block(p_bme280->fd, BME280_REG_DIG_H2, 7, buff);
+    I2C_read_block(p_bme280->fd, BME280_REG_DIG_H2, 7, buff);
 
     calib->dig_H2 = (int16_t)((((int16_t)((int8_t) buff[1])) << 8) | buff[0]);
     calib->dig_H3 = buff[2];
@@ -101,12 +101,12 @@ uint8_t bme280_read_calib()
     return U8_SUCCESS;
 }
 
-uint8_t bme280_read_burst_tph()
+uint8_t BME280_read_burst_tph()
 {
     NULL_CHECK
     uint8_t*            buff = p_bme280->buffer;
     bme280_uncomp_meas* meas = p_bme280->p_uncomp_meas;
-    if (i2c_read_block(p_bme280->fd, BME280_REG_MEAS, 8, buff) == ERROR)
+    if (I2C_read_block(p_bme280->fd, BME280_REG_MEAS, 8, buff) == -1)
     {
         return U8_ERROR;
     }
@@ -121,19 +121,19 @@ uint8_t bme280_read_burst_tph()
     unpack_press();
     unpack_temp();
     unpack_humid();
-    bme280_compensate_temp();
-    bme280_compensate_press();
-    bme280_compensate_humid();
+    BME280_compensate_temp();
+    BME280_compensate_press();
+    BME280_compensate_humid();
 
     return U8_SUCCESS;
 }
 
-uint8_t bme280_read_temp()
+uint8_t BME280_read_temp()
 {
     NULL_CHECK
     uint8_t*            buff = p_bme280->buffer;
     bme280_uncomp_meas* meas = p_bme280->p_uncomp_meas;
-    if (i2c_read_block(p_bme280->fd, BME280_REG_TEMP, 3, buff) == ERROR)
+    if (I2C_read_block(p_bme280->fd, BME280_REG_TEMP, 3, buff) == -1)
     {
         return U8_ERROR;
     }
@@ -143,12 +143,12 @@ uint8_t bme280_read_temp()
     return unpack_temp();
 }
 
-uint8_t bme280_read_press()
+uint8_t BME280_read_press()
 {
     NULL_CHECK
     uint8_t*            buff = p_bme280->buffer;
     bme280_uncomp_meas* meas = p_bme280->p_uncomp_meas;
-    if (i2c_read_block(p_bme280->fd, BME280_REG_PRESS, 3, buff) == ERROR)
+    if (I2C_read_block(p_bme280->fd, BME280_REG_PRESS, 3, buff) == -1)
     {
         return U8_ERROR;
     }
@@ -158,12 +158,12 @@ uint8_t bme280_read_press()
     return unpack_press();
 }
 
-uint8_t bme280_read_humid()
+uint8_t BME280_read_humid()
 {
     NULL_CHECK
     uint8_t*            buff = p_bme280->buffer;
     bme280_uncomp_meas* meas = p_bme280->p_uncomp_meas;
-    if (i2c_read_block(p_bme280->fd, BME280_REG_HUMID, 2, buff) == ERROR)
+    if (I2C_read_block(p_bme280->fd, BME280_REG_HUMID, 2, buff) == -1)
     {
         return U8_ERROR;
     }
@@ -172,7 +172,7 @@ uint8_t bme280_read_humid()
     return unpack_humid();
 }
 
-uint8_t bme280_set_powermode(uint8_t mode)
+uint8_t BME280_set_powermode(uint8_t mode)
 {
     NULL_CHECK
     uint8_t ctrl_val     = 0;
@@ -185,33 +185,33 @@ uint8_t bme280_set_powermode(uint8_t mode)
     {
         ctrl_val  = p_bme280->ctrl_meas_reg;
         ctrl_val  = set_bit_slice(ctrl_val, 0x03, 0, mode);
-        prev_mode = bme280_get_powermode();
+        prev_mode = BME280_get_powermode();
 
         if (prev_mode != BME280_SLEEP_MODE)
         {
-            bme280_soft_rst();
-            bme280_delay(3);
+            BME280_soft_rst();
+            BME280_delay(3);
 
             conf_pre = p_bme280->config_reg;
-            i2c_write_reg(p_bme280->fd, BME280_REG_CONF, conf_pre);
+            I2C_write_reg(p_bme280->fd, BME280_REG_CONF, conf_pre);
 
             ctrl_hum_pre = p_bme280->ctrl_humid_reg;
-            i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
+            I2C_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
 
-            i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_val);
+            I2C_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_val);
         }
         else
         {
-            i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_val);
+            I2C_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_val);
         }
 
-        i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
+        I2C_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
         p_bme280->ctrl_meas_reg = common;
 
-        i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
+        I2C_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
         p_bme280->ctrl_humid_reg = common;
 
-        i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
+        I2C_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
         p_bme280->config_reg = common;
     }
     else
@@ -221,16 +221,16 @@ uint8_t bme280_set_powermode(uint8_t mode)
     return U8_SUCCESS;
 }
 
-uint8_t bme280_get_powermode()
+uint8_t BME280_get_powermode()
 {
     NULL_CHECK
     uint8_t mode = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &mode);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL, &mode);
     p_bme280->power_mode = get_bit_slice(mode, 0x03, 0);
     return p_bme280->power_mode;
 }
 
-uint8_t bme280_set_temp_oversample(uint8_t rate)
+uint8_t BME280_set_temp_oversample(uint8_t rate)
 {
     NULL_CHECK
     uint8_t common       = 0;
@@ -240,49 +240,49 @@ uint8_t bme280_set_temp_oversample(uint8_t rate)
 
     common    = p_bme280->ctrl_meas_reg;
     common    = set_bit_slice(common, 0xE0, 5, rate);
-    mode_prev = bme280_get_powermode();
+    mode_prev = BME280_get_powermode();
 
     if (mode_prev != BME280_SLEEP_MODE)
     {
-        bme280_soft_rst();
-        bme280_delay(3);
+        BME280_soft_rst();
+        BME280_delay(3);
 
         conf_pre = p_bme280->config_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, conf_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CONF, conf_pre);
 
         ctrl_hum_pre = p_bme280->ctrl_humid_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
 
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, common);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL, common);
     }
     else
     {
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, common);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL, common);
     }
     p_bme280->ovrsmpl_temp = rate;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
 
     p_bme280->ctrl_meas_reg = common;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
 
     p_bme280->ctrl_humid_reg = common;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
 
     p_bme280->config_reg = common;
 
     return U8_SUCCESS;
 }
 
-uint8_t bme280_get_temp_oversample()
+uint8_t BME280_get_temp_oversample()
 {
     NULL_CHECK
     uint8_t rate = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &rate);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL, &rate);
     p_bme280->ovrsmpl_temp = get_bit_slice(rate, 0xE0, 5);  // define macros
     return p_bme280->ovrsmpl_temp;
 }
 
-uint8_t bme280_set_press_oversample(uint8_t rate)
+uint8_t BME280_set_press_oversample(uint8_t rate)
 {
     NULL_CHECK
     uint8_t common       = 0;
@@ -292,49 +292,49 @@ uint8_t bme280_set_press_oversample(uint8_t rate)
 
     common    = p_bme280->ctrl_meas_reg;
     common    = set_bit_slice(common, 0x1C, 2, rate);
-    mode_prev = bme280_get_powermode();
+    mode_prev = BME280_get_powermode();
 
     if (mode_prev != BME280_SLEEP_MODE)
     {
-        bme280_soft_rst();
-        bme280_delay(3);
+        BME280_soft_rst();
+        BME280_delay(3);
 
         conf_pre = p_bme280->config_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, conf_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CONF, conf_pre);
 
         ctrl_hum_pre = p_bme280->ctrl_humid_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
 
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, common);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL, common);
     }
     else
     {
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, common);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL, common);
     }
     p_bme280->ovrsmpl_press = rate;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
 
     p_bme280->ctrl_meas_reg = common;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
 
     p_bme280->ctrl_humid_reg = common;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
 
     p_bme280->config_reg = common;
 
     return U8_SUCCESS;
 }
 
-uint8_t bme280_get_press_oversample()
+uint8_t BME280_get_press_oversample()
 {
     NULL_CHECK
     uint8_t rate = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &rate);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL, &rate);
     p_bme280->ovrsmpl_press = get_bit_slice(rate, 0x1C, 2);
     return p_bme280->ovrsmpl_press;
 }
 
-uint8_t bme280_set_humid_oversample(uint8_t rate)
+uint8_t BME280_set_humid_oversample(uint8_t rate)
 {
     NULL_CHECK
     uint8_t common    = 0;
@@ -344,50 +344,50 @@ uint8_t bme280_set_humid_oversample(uint8_t rate)
 
     common    = p_bme280->ctrl_humid_reg;
     common    = set_bit_slice(common, 0x07, 0, rate);
-    mode_prev = bme280_get_powermode();
+    mode_prev = BME280_get_powermode();
 
     if (mode_prev != BME280_SLEEP_MODE)
     {
-        bme280_soft_rst();
-        bme280_delay(3);
+        BME280_soft_rst();
+        BME280_delay(3);
 
         conf_pre = p_bme280->config_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, conf_pre);
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, common);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CONF, conf_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, common);
 
         ctrl_pre = p_bme280->ctrl_meas_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_pre);
     }
     else
     {
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, common);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, common);
         ctrl_pre = p_bme280->ctrl_meas_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_pre);
     }
     p_bme280->ovrsmpl_humid = rate;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
 
     p_bme280->ctrl_meas_reg = common;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
 
     p_bme280->ctrl_humid_reg = common;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
 
     p_bme280->config_reg = common;
 
     return U8_SUCCESS;
 }
 
-uint8_t bme280_get_humid_oversample()
+uint8_t BME280_get_humid_oversample()
 {
     NULL_CHECK
     uint8_t rate = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &rate);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &rate);
     p_bme280->ovrsmpl_humid = get_bit_slice(rate, 0x07, 0);
     return p_bme280->ovrsmpl_humid;
 }
 
-uint8_t bme280_set_standby_durn(uint8_t ms)
+uint8_t BME280_set_standby_durn(uint8_t ms)
 {
     NULL_CHECK
     uint8_t common       = 0;
@@ -397,47 +397,47 @@ uint8_t bme280_set_standby_durn(uint8_t ms)
 
     common    = p_bme280->config_reg;
     common    = set_bit_slice(common, 0xE0, 5, ms);
-    mode_prev = bme280_get_powermode();
+    mode_prev = BME280_get_powermode();
 
     if (mode_prev != BME280_SLEEP_MODE)
     {
-        bme280_soft_rst();
-        bme280_delay(3);
+        BME280_soft_rst();
+        BME280_delay(3);
 
-        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, common);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CONF, common);
 
         ctrl_hum_pre = p_bme280->ctrl_humid_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
 
         ctrl_pre = p_bme280->ctrl_meas_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_pre);
     }
     else
     {
-        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, common);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CONF, common);
     }
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
     p_bme280->ctrl_meas_reg = common;
 
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
     p_bme280->ctrl_humid_reg = common;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
 
     p_bme280->config_reg = common;
 
     return U8_SUCCESS;
 }
 
-uint8_t bme280_get_standby_durn()
+uint8_t BME280_get_standby_durn()
 {
     NULL_CHECK
     uint8_t durn = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &durn);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CONF, &durn);
     p_bme280->standby_durn = get_bit_slice(durn, 0xE0, 5);
     return p_bme280->standby_durn;
 }
 
-uint8_t bme280_set_filter(uint8_t coef)
+uint8_t BME280_set_filter(uint8_t coef)
 {
     NULL_CHECK
     uint8_t common       = 0;
@@ -447,47 +447,47 @@ uint8_t bme280_set_filter(uint8_t coef)
 
     common    = p_bme280->config_reg;
     common    = set_bit_slice(common, 0x1C, 2, coef);
-    mode_prev = bme280_get_powermode();
+    mode_prev = BME280_get_powermode();
 
     if (mode_prev != BME280_SLEEP_MODE)
     {
-        bme280_soft_rst();
-        bme280_delay(3);
+        BME280_soft_rst();
+        BME280_delay(3);
 
-        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, common);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CONF, common);
 
         ctrl_hum_pre = p_bme280->ctrl_humid_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
 
         ctrl_pre = p_bme280->ctrl_meas_reg;
-        i2c_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_pre);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CTRL, ctrl_pre);
     }
     else
     {
-        i2c_write_reg(p_bme280->fd, BME280_REG_CONF, common);
+        I2C_write_reg(p_bme280->fd, BME280_REG_CONF, common);
     }
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL, &common);
     p_bme280->ctrl_meas_reg = common;
 
-    i2c_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CTRL_HUMID, &common);
     p_bme280->ctrl_humid_reg = common;
 
-    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CONF, &common);
     p_bme280->config_reg = common;
 
     return U8_SUCCESS;
 }
 
-uint8_t bme280_get_filter()
+uint8_t BME280_get_filter()
 {
     NULL_CHECK
     uint8_t coeff = 0;
-    i2c_read_reg(p_bme280->fd, BME280_REG_CONF, &coeff);
+    I2C_read_reg(p_bme280->fd, BME280_REG_CONF, &coeff);
     p_bme280->filter = get_bit_slice(coeff, 0x1C, 2);
     return p_bme280->filter;
 }
 
-uint8_t bme280_compensate_temp()
+uint8_t BME280_compensate_temp()
 {
     NULL_CHECK
     int32_t             adc_T = p_bme280->p_uncomp_meas->temperature;
@@ -522,7 +522,7 @@ uint8_t bme280_compensate_temp()
     return U8_SUCCESS;
 }
 
-uint8_t bme280_compensate_press()
+uint8_t BME280_compensate_press()
 {
     NULL_CHECK
     int32_t             adc_P = p_bme280->p_uncomp_meas->pressure;
@@ -610,7 +610,7 @@ uint8_t bme280_compensate_press()
     return U8_SUCCESS;
 }
 
-uint8_t bme280_compensate_humid()
+uint8_t BME280_compensate_humid()
 {
     NULL_CHECK
     int32_t             adc_H = p_bme280->p_uncomp_meas->humidity;
@@ -655,28 +655,28 @@ uint8_t bme280_compensate_humid()
     return U8_SUCCESS;
 }
 
-double bme280_temp()
+double BME280_temp()
 {
     NULL_CHECK
     return p_bme280->comp_temp;
 }
 
-double bme280_press()
+double BME280_press()
 {
     NULL_CHECK
     return p_bme280->comp_press;
 }
 
-double bme280_humid()
+double BME280_humid()
 {
     NULL_CHECK
     return p_bme280->comp_humid;
 }
 
-uint8_t bme280_soft_rst()
+uint8_t BME280_soft_rst()
 {
     NULL_CHECK
-    if (i2c_write_reg(p_bme280->fd, BME280_REG_SOFTRST, BME280_RST) == ERROR)
+    if (I2C_write_reg(p_bme280->fd, BME280_REG_SOFTRST, BME280_RST) == -1)
     {
         return U8_ERROR;
     }
@@ -686,7 +686,7 @@ uint8_t bme280_soft_rst()
     }
 }
 
-void bme280_delay(uint8_t ms)
+void BME280_delay(uint8_t ms)
 {
     struct timespec tv, tvr;
     tv.tv_sec  = 0;
