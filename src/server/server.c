@@ -31,7 +31,7 @@
 #include <apr_thread_mutex.h>
 #include <apr_thread_proc.h>
 
-#include "util/util.h"
+#include "util/types.h"
 
 #define DEFAULT_SO_BACKLOG (SOMAXCONN)
 #define BUFFSIZE (8129)

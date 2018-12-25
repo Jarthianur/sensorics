@@ -19,6 +19,8 @@
  }
  */
 
+#define LOG_COMPONENT "main"
+
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -38,7 +40,7 @@
 #include "server/server.h"
 #include "util/cmdline.h"
 #include "util/logging.h"
-#include "util/util.h"
+#include "util/types.h"
 
 /**
  * Produce WIMDA sentence and store into buff.
