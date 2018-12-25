@@ -76,10 +76,12 @@ int32_t i2c_read_reg(int fd, uint8_t reg, uint8_t* data)
     {
         return ERROR;
     }
-    if ((*data = i2c_smbus_read_byte(fd)) < 0)
+    int32_t v = i2c_smbus_read_byte(fd);
+    if (v < 0)
     {
         return ERROR;
     }
+    *data = v & 0x0FF;
     return SUCCESS;
 }
 
