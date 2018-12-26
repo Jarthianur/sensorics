@@ -27,7 +27,7 @@
 #    define LOG_COMPONENT ""
 #endif
 
-extern char LOG_time_str[32];
+extern char LOG_time_str[64];
 
 const char* LOG_get_time();
 

@@ -21,10 +21,23 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <stdlib.h>
 
-#include "types.h"
+#include "server.h"
 
-u16_t CMD_parse_u16(const char* str, u16_t def);
+static SRV_DEFINE_PROCESS_CLIENT(simple_send)
+{
+    SRV_CLIENT_INIT
+    char buf[8192];
 
-u32_t CMD_parse_u32(const char* str, u32_t def);
+    while (server->running)
+    {
+        apr_size_t len = server->handle_client(buf, sizeof(buf));
+        apr_socket_send(socket, buf, &len);
+        if (len == 0)
+        {
+            break;
+        }
+    }
+    SRV_CLIENT_DEINIT
+}

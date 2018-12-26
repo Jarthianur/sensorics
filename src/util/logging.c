@@ -23,7 +23,7 @@
 
 #include <time.h>
 
-char LOG_time_str[32] = "";
+char LOG_time_str[64] = "";
 
 const char* LOG_get_time()
 {

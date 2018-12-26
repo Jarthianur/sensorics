@@ -21,12 +21,41 @@
 
 #pragma once
 
+#include <apr.h>
 #include <apr_general.h>
+#include <apr_network_io.h>
 #include <apr_pools.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
 
-#define SERVER_DEFAULT_PORT (7997)
+#include "util/types.h"
+
+#define SRV_DEFAULT_PORT (7997)
+
+#define SRV_CLIENT_INIT                           \
+    apr_socket_t* socket;                         \
+    basic_server* server;                         \
+    {                                             \
+        client_data* cdata = (client_data*) data; \
+        socket             = cdata->socket;       \
+        server             = cdata->server;       \
+        free(data);                               \
+        data = NULL;                              \
+    }
+
+#define SRV_CLIENT_DEINIT                                \
+    apr_socket_shutdown(socket, APR_SHUTDOWN_READWRITE); \
+    apr_socket_close(socket);                            \
+    apr_thread_mutex_lock(server->cond_mutex);           \
+    if (--(server->clients) == 0)                        \
+    {                                                    \
+        apr_thread_cond_signal(server->close_cond);      \
+    }                                                    \
+    apr_thread_mutex_unlock(server->cond_mutex);         \
+    return NULL;
+
+#define SRV_DEFINE_PROCESS_CLIENT(M) void* APR_THREAD_FUNC M(_unused_ apr_thread_t* thd, void* data)
 
 /**
  * Prototype of a client handler.
@@ -37,16 +66,26 @@
  * @param size_t array length
  * @return chars (bytes) written to the ptr
  */
-typedef size_t (*client_handler)(char*, size_t);
+typedef size_t (*SRV_client_handler)(char*, size_t);
 
-/**
- * Run the TCP server.
- * Blocking until signal caught.
- * @param port listen on this port
- * @param handle client handler
- * @param parent memory pool parent
- * @return status
- */
-int32_t server_run(int port, client_handler handle, apr_pool_t* parent);
+typedef void* APR_THREAD_FUNC (*SRV_thread_handle)(apr_thread_t*, void*);
 
-void server_stop();
+typedef struct
+{
+    size_t              clients;
+    bool_t              running;
+    apr_port_t          port;
+    apr_thread_cond_t*  close_cond;
+    apr_thread_mutex_t* cond_mutex;
+    SRV_client_handler  handle_client;
+} basic_server;
+
+typedef struct
+{
+    basic_server* server;
+    apr_socket_t* socket;
+} client_data;
+
+s32_t SRV_run(basic_server* server, SRV_thread_handle thd_handle, apr_pool_t* parent);
+
+void SRV_stop(basic_server* server);

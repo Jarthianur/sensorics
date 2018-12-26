@@ -22,24 +22,22 @@
 #include "util/cmdline.h"
 
 #include <errno.h>
-#include <limits.h>
-#include <stddef.h>
 #include <stdlib.h>
 
-uint16_t parse_port(const char* str, uint16_t def)
+u16_t CMD_parse_u16(const char* str, u16_t def)
 {
     uint64_t p = strtoul(str, NULL, 10);
-    if (errno == ERANGE || p > UINT16_MAX)
+    if (errno == ERANGE || p > U16_MAX)
     {
         return def;
     }
     return p;
 }
 
-uint32_t parse_interval(const char* str, uint32_t def)
+u32_t CMD_parse_u32(const char* str, u32_t def)
 {
     uint64_t t = strtoul(str, NULL, 10);
-    if (errno == ERANGE || t > UINT32_MAX)
+    if (errno == ERANGE || t > U32_MAX)
     {
         return def;
     }

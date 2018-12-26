@@ -22,22 +22,16 @@
 #define LOG_COMPONENT "main"
 
 #include <signal.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
-#include <apr.h>
 #include <apr_errno.h>
-#include <apr_general.h>
-#include <apr_pools.h>
 #include <apr_signal.h>
-#include <apr_thread_mutex.h>
-#include <apr_thread_proc.h>
 
 #include "bme280/bme280.h"
 #include "server/server.h"
+#include "server/simple_send.h"
 #include "util/cmdline.h"
 #include "util/logging.h"
 #include "util/types.h"
@@ -73,28 +67,31 @@ double humidity    = 0.0;
 
 uint32_t interval = 1;
 
+basic_server server = {0, FALSE, 0, NULL, NULL, NULL};
+
 int main(int argc, char** argv)
 {
-    uint16_t port = 0;
+    uint16_t port = SRV_DEFAULT_PORT;
     int32_t  arg;
     for (arg = 1; arg < argc; ++arg)
     {
         if (strcmp(argv[arg], "-p") == 0 && arg < argc - 1)
         {
-            port = parse_port(argv[arg + 1], SERVER_DEFAULT_PORT);
+            port = CMD_parse_u16(argv[arg + 1], SRV_DEFAULT_PORT);
         }
         else if (strcmp(argv[arg], "-t") == 0 && arg < argc - 1)
         {
-            interval = parse_interval(argv[arg + 1], 1);
+            interval = CMD_parse_u32(argv[arg + 1], 1);
         }
     }
     LOGF("Using interval: %u", interval);
+    LOGF("Using port: %u", port);
 
     // Initialize BME280
     uint8_t rc = 0;
     bme280  bme;
 
-    if (BME280_init("/dev/i2c-1", &bme) == U8_ERROR)
+    if (BME280_init("/dev/i2c-1", &bme) == BME280_ERROR)
     {
         printf("init failed\n");
         return 1;
@@ -138,7 +135,9 @@ int main(int argc, char** argv)
     apr_signal(SIGPIPE, SIG_IGN);
 
     // Run server
-    server_run(port, handle, mem_pool);
+    server.port          = port;
+    server.handle_client = handle;
+    SRV_run(&server, simple_send, mem_pool);
 
     // De-initialize
     apr_thread_join(&ret_stat, thd_obj);
@@ -198,7 +197,7 @@ static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, void* data)
     while (run_status == 1)
     {
         apr_thread_mutex_lock(meas_mutex);
-        if (BME280_read_burst_tph(bme) == U8_ERROR)
+        if (BME280_read_burst_tph(bme) == BME280_ERROR)
         {
             printf("read from i2c failed\n");
             apr_thread_mutex_unlock(meas_mutex);
@@ -217,5 +216,5 @@ void handle_signal(int signo)
 {
     printf("caught signal: %d\n", signo);
     run_status = 0;
-    server_stop();
+    SRV_stop(&server);
 }
