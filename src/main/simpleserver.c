@@ -36,7 +36,7 @@
 /**
  * Produce WIMDA sentence and store into buff.
  */
-size_t handle(char* buff, size_t len);
+size_t handle_client(char* buff, size_t len);
 
 /**
  * Exit signal handler.
@@ -66,7 +66,7 @@ int main(_unused_ int argc, _unused_ char** argv)
     apr_signal(SIGKILL, handle_signal);
     apr_signal(SIGPIPE, SIG_IGN);
 
-    server.handle_client = handle;
+    server.handle_client = handle_client;
 
     // Run server
     SRV_run(&server, simple_send, mem_pool);
@@ -76,7 +76,7 @@ int main(_unused_ int argc, _unused_ char** argv)
     return 0;
 }
 
-size_t handle(char* buf, _unused_ size_t len)
+size_t handle_client(char* buf, _unused_ size_t len)
 {
     sleep(1);
     size_t a = 0;

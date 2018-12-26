@@ -39,11 +39,13 @@
 /**
  * Produce WIMDA sentence and store into buff.
  */
-size_t handle(char* buff, size_t len);
+size_t handle_client(char* buff, size_t len);
+
 /**
  * Handler to poll temp, press, humid from bme280 sensor.
  */
 static void* APR_THREAD_FUNC poll_bme280(apr_thread_t* thd, void*);
+
 /**
  * Exit signal handler.
  */
@@ -51,28 +53,26 @@ void handle_signal(int signo);
 
 /**
  * Global run status.
- * 1 = run
- * 0 = stop
  */
-int run_status = 1;
+bool_t run_status = TRUE;
 
 /**
  * Mutex to gain threadsafety for temp, press, humid data.
  */
 apr_thread_mutex_t* meas_mutex;
 
-double temperature = 0.0;
-double pressure    = 0.0;
-double humidity    = 0.0;
+f64_t temperature = 0.0;
+f64_t pressure    = 0.0;
+f64_t humidity    = 0.0;
 
-uint32_t interval = 1;
+u32_t interval = 1;
 
 basic_server server = {0, FALSE, 0, NULL, NULL, NULL};
 
 int main(int argc, char** argv)
 {
-    uint16_t port = SRV_DEFAULT_PORT;
-    int32_t  arg;
+    u16_t port = SRV_DEFAULT_PORT;
+    s32_t arg;
     for (arg = 1; arg < argc; ++arg)
     {
         if (strcmp(argv[arg], "-p") == 0 && arg < argc - 1)
@@ -85,15 +85,15 @@ int main(int argc, char** argv)
         }
     }
     LOGF("Using interval: %u", interval);
-    LOGF("Using port: %u", port);
+    LOGF("Using port: %hu", port);
 
     // Initialize BME280
-    uint8_t rc = 0;
-    bme280  bme;
+    u8_t   rc = 0;
+    bme280 bme;
 
     if (BME280_init("/dev/i2c-1", &bme) == BME280_ERROR)
     {
-        printf("init failed\n");
+        LOG("init failed");
         return 1;
     }
     rc |= BME280_set_powermode(&bme, BME280_NORMAL_MODE);
@@ -105,11 +105,11 @@ int main(int argc, char** argv)
 
     if (rc != 0)
     {
-        printf("setup failed\n");
+        LOG("setup failed");
         return 1;
     }
     // Wait for registers setup time.
-    BME280_delay(0xFF);
+    BME280_delay(U8_MAX);
 
     // Initialize routine
     apr_initialize();
@@ -126,7 +126,7 @@ int main(int argc, char** argv)
     // Spawn poll thread
     if ((ret_stat = apr_thread_create(&thd_obj, NULL, poll_bme280, &bme, mem_pool)) != APR_SUCCESS)
     {
-        printf("create thread failed\n");
+        LOG("create thread failed");
     }
 
     // register signal handlers
@@ -136,7 +136,7 @@ int main(int argc, char** argv)
 
     // Run server
     server.port          = port;
-    server.handle_client = handle;
+    server.handle_client = handle_client;
     SRV_run(&server, simple_send, mem_pool);
 
     // De-initialize
@@ -153,21 +153,21 @@ int main(int argc, char** argv)
 /**
  * Compute checksum for NMEA sentence.
  */
-int32_t checksum(const char* sentence, size_t size)
+u8_t checksum(const char* sentence, size_t size)
 {
-    int32_t csum = 0;
-    size_t  i    = 1;  // $ in nmea str not included
+    u8_t   csum = 0;
+    size_t i    = 1;  // $ in nmea str not included
     while (sentence[i] != '*' && sentence[i] != '\0' && i < size)
     {
-        csum ^= (int32_t) sentence[i++];
+        csum ^= (u8_t) sentence[i++];
     }
     return csum;
 }
 
-size_t handle(char* buf, size_t len)
+size_t handle_client(char* buf, size_t len)
 {
     sleep(interval);
-    int32_t rc = 0;
+    s32_t rc = 0;
     apr_thread_mutex_lock(meas_mutex);
     if ((rc = snprintf(buf, len, "$WIMDA,%.2lf,I,%.4lf,B,%.1lf,C,,,%.1lf,,,,,,,,,,,*",
                        pressure * 0.02953, pressure / 1000.0, temperature, humidity)) < 0)
@@ -175,9 +175,9 @@ size_t handle(char* buf, size_t len)
         return 0;
     }
     apr_thread_mutex_unlock(meas_mutex);
-    int32_t csum = checksum(buf, rc);
-    char    end[8];
-    size_t  l = rc;
+    u8_t   csum = checksum(buf, rc);
+    char   end[8];
+    size_t l = rc;
     if ((rc = snprintf(end, 8, "%02x\r\n", csum)) < 0)
     {
         return 0;
@@ -194,12 +194,12 @@ size_t handle(char* buf, size_t len)
 static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, void* data)
 {
     bme280* bme = (bme280*) data;
-    while (run_status == 1)
+    while (run_status)
     {
         apr_thread_mutex_lock(meas_mutex);
         if (BME280_read_burst_tph(bme) == BME280_ERROR)
         {
-            printf("read from i2c failed\n");
+            LOG("read from i2c failed");
             apr_thread_mutex_unlock(meas_mutex);
             break;
         }
@@ -214,7 +214,7 @@ static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, void* data)
 
 void handle_signal(int signo)
 {
-    printf("caught signal: %d\n", signo);
-    run_status = 0;
+    LOGF("caught signal: %d", signo);
+    run_status = FALSE;
     SRV_stop(&server);
 }
