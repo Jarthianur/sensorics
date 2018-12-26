@@ -31,6 +31,7 @@
 
 #include "server/server.h"
 #include "server/simple_send.h"
+#include "server/http.h"
 #include "util/types.h"
 
 /**
@@ -69,7 +70,7 @@ int main(_unused_ int argc, _unused_ char** argv)
     server.handle_client = handle;
 
     // Run server
-    SRV_run(&server, simple_send, mem_pool);
+    SRV_run(&server, http_stream, mem_pool);
 
     apr_pool_destroy(mem_pool);
     apr_terminate();
@@ -79,14 +80,8 @@ int main(_unused_ int argc, _unused_ char** argv)
 size_t handle(char* buf, _unused_ size_t len)
 {
     sleep(1);
-    size_t a = 0;
-    while (a < 10)
-    {
-        buf[a++] = 'a';
-    }
-    buf[a++] = '\r';
-    buf[a++] = '\n';
-    return a;
+    strcpy(buf, "15\r\n{\"key\":\"value\"}\r\n");
+    return 22;
 }
 
 void handle_signal(int signo)
