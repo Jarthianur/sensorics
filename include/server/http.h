@@ -33,7 +33,7 @@ static SRV_DEFINE_PROCESS_CLIENT(http_stream)
     char buf[8192];
     strcpy(
         buf,
-        "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Type: application/json\r\n\r\n");
+        "HTTP/1.1 101 OK\r\nTransfer-Encoding: chunked\r\nContent-Type: application/json\r\n\r\n");
     apr_size_t len = 104;
     apr_socket_send(socket, buf, &len);
     while (server->running)
