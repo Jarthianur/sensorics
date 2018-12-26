@@ -15,7 +15,7 @@ set_target_properties(bmeserver PROPERTIES COMPILE_FLAGS "${APR_COMPILE_FLAGS} -
 target_include_directories(bmeserver PUBLIC ${CMAKE_SOURCE_DIR}/include ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR})
 target_link_libraries(bmeserver PUBLIC ${APR_LIBRARIES} ${APRUTIL_LIBRARIES} Threads::Threads)
 
-add_executable(simpleserver ${PROJECT_SOURCE_DIR}/src/main/simpleserver.c ${PROJECT_SOURCE_DIR}/src/server/server.c)
+add_executable(simpleserver ${PROJECT_SOURCE_DIR}/src/main/simpleserver.c ${PROJECT_SOURCE_DIR}/src/modules/server/server.c)
 set_target_properties(simpleserver PROPERTIES COMPILE_FLAGS "${APR_COMPILE_FLAGS} -Wall -Wextra -Werror -O3")
 target_include_directories(simpleserver PUBLIC ${CMAKE_SOURCE_DIR}/include ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR})
 target_link_libraries(simpleserver PUBLIC ${APR_LIBRARIES} ${APRUTIL_LIBRARIES} Threads::Threads)
