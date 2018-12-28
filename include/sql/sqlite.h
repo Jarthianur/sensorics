@@ -48,4 +48,4 @@ bool_t SQL_open(sql_db* db);
 void   SQL_close(sql_db* db);
 
 sql_result SQL_exec(sql_db* db, sql_stmt* stmt);
-bool_t     SQL_prepare(sql_stmt* stmt, const char* fmt, va_list args);
+bool_t     SQL_prepare(sql_stmt* stmt, const char* fmt, ...);

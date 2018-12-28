@@ -31,8 +31,8 @@
 
 #include "server/server.h"
 #include "server/simple_send.h"
-#include "util/types.h"
 #include "sql/sqlite.h"
+#include "util/types.h"
 
 /**
  * Produce WIMDA sentence and store into buff.
@@ -49,9 +49,9 @@ void handle_signal(int signo);
  * 1 = run
  * 0 = stop
  */
-int run_status = 1;
-basic_server server = {0, FALSE, 1234, NULL, NULL, NULL};
-sql_db db;
+int          run_status = 1;
+basic_server server     = {0, FALSE, 1234, NULL, NULL, NULL};
+sql_db       db;
 
 int main(_unused_ int argc, _unused_ char** argv)
 {
@@ -95,7 +95,8 @@ size_t handle_client(char* buf, _unused_ size_t len)
     buf[a++] = '\r';
     buf[a++] = '\n';
     sql_stmt stmt;
-    SQL_prepare(&stmt, "INSERT INTO test VALUES(1,'hello world');");
+    SQL_prepare(&stmt, "INSERT INTO test VALUES(1,%s);", "'hello world'");
+    printf("%s\n",stmt.query);
     SQL_exec(&db, &stmt);
     free(stmt.query);
     return a;
