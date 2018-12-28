@@ -223,8 +223,7 @@ static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, void* data)
         temperature = BME280_temp(bme);
         pressure    = BME280_press(bme);
         humidity    = BME280_humid(bme);
-        ++int_count;
-        if (int_count % 600 == 0)
+        if (int_count++ % 600 == 0)
         {
             int_count = 0;
             sql_stmt stmt;
@@ -234,6 +233,7 @@ static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, void* data)
             {
                 LOG("Export to database failed");
             }
+            LOGF("Written: %s", stmt.query);
             free(stmt.query);
         }
         apr_thread_mutex_unlock(meas_mutex);
