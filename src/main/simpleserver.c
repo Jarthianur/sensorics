@@ -32,6 +32,7 @@
 #include "server/server.h"
 #include "server/simple_send.h"
 #include "util/types.h"
+#include "sql/sqlite.h"
 
 /**
  * Produce WIMDA sentence and store into buff.
@@ -49,8 +50,8 @@ void handle_signal(int signo);
  * 0 = stop
  */
 int run_status = 1;
-
 basic_server server = {0, FALSE, 1234, NULL, NULL, NULL};
+sql_db db;
 
 int main(_unused_ int argc, _unused_ char** argv)
 {
@@ -66,8 +67,15 @@ int main(_unused_ int argc, _unused_ char** argv)
     apr_signal(SIGKILL, handle_signal);
     apr_signal(SIGPIPE, SIG_IGN);
 
-    server.handle_client = handle_client;
+    db.db_file = "test.db";
+    if (!SQL_open(&db))
+    {
+        return -1;
+    }
+    sql_stmt stmt = {"DROP TABLE IF EXISTS test;CREATE TABLE test(id INT, value TEXT);", NULL};
+    SQL_exec(&db, &stmt);
 
+    server.handle_client = handle_client;
     // Run server
     SRV_run(&server, simple_send, mem_pool);
 
@@ -86,6 +94,10 @@ size_t handle_client(char* buf, _unused_ size_t len)
     }
     buf[a++] = '\r';
     buf[a++] = '\n';
+    sql_stmt stmt;
+    SQL_prepare(&stmt, "INSERT INTO test VALUES(1,'hello world');");
+    SQL_exec(&db, &stmt);
+    free(stmt.query);
     return a;
 }
 

@@ -13,10 +13,10 @@ file(GLOB_RECURSE bme_sources src/modules/*.c)
 add_executable(bmeserver ${CMAKE_SOURCE_DIR}/src/main/bmeserver.c ${bme_sources})
 set_target_properties(bmeserver PROPERTIES COMPILE_FLAGS "${APR_COMPILE_FLAGS} -Wall -Wextra -Werror -O3")
 target_include_directories(bmeserver PUBLIC ${CMAKE_SOURCE_DIR}/include ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR})
-target_link_libraries(bmeserver PUBLIC ${APR_LIBRARIES} ${APRUTIL_LIBRARIES} Threads::Threads)
+target_link_libraries(bmeserver PUBLIC ${APR_LIBRARIES} ${APRUTIL_LIBRARIES} Threads::Threads sqlite3)
 
-add_executable(simpleserver ${PROJECT_SOURCE_DIR}/src/main/simpleserver.c ${PROJECT_SOURCE_DIR}/src/modules/server/server.c)
+add_executable(simpleserver ${PROJECT_SOURCE_DIR}/src/main/simpleserver.c ${PROJECT_SOURCE_DIR}/src/modules/server/server.c ${PROJECT_SOURCE_DIR}/src/modules/sql/sqlite.c)
 set_target_properties(simpleserver PROPERTIES COMPILE_FLAGS "${APR_COMPILE_FLAGS} -Wall -Wextra -Werror -O3 -Wno-unused-function")
 target_include_directories(simpleserver PUBLIC ${CMAKE_SOURCE_DIR}/include ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR})
-target_link_libraries(simpleserver PUBLIC ${APR_LIBRARIES} ${APRUTIL_LIBRARIES} Threads::Threads)
+target_link_libraries(simpleserver PUBLIC ${APR_LIBRARIES} ${APRUTIL_LIBRARIES} Threads::Threads sqlite3)
 

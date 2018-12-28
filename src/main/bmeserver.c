@@ -32,6 +32,7 @@
 #include "bme280/bme280.h"
 #include "server/server.h"
 #include "server/simple_send.h"
+#include "sql/sqlite.h"
 #include "util/cmdline.h"
 #include "util/logging.h"
 #include "util/types.h"
@@ -65,9 +66,12 @@ f64_t temperature = 0.0;
 f64_t pressure    = 0.0;
 f64_t humidity    = 0.0;
 
-u32_t interval = 1;
+u32_t  interval  = 1;
+size_t int_count = 0;
 
 basic_server server = {0, FALSE, 0, NULL, NULL, NULL};
+
+sql_db db;
 
 int main(int argc, char** argv)
 {
@@ -106,7 +110,6 @@ int main(int argc, char** argv)
     if (rc != 0)
     {
         LOG("setup failed");
-        return 1;
     }
     // Wait for registers setup time.
     BME280_delay(U8_MAX);
@@ -134,6 +137,16 @@ int main(int argc, char** argv)
     apr_signal(SIGKILL, handle_signal);
     apr_signal(SIGPIPE, SIG_IGN);
 
+    db.db_file = "sensor.db";
+    if (!SQL_open(&db))
+    {
+        LOG("Could not open database");
+    }
+    sql_stmt stmt = {
+        "DROP TABLE IF EXISTS sensor;CREATE TABLE sensor(time TEXT, temp REAL, press REAL, humid REAL);",
+        NULL};
+    SQL_exec(&db, &stmt);
+
     // Run server
     server.port          = port;
     server.handle_client = handle_client;
@@ -147,6 +160,7 @@ int main(int argc, char** argv)
     BME280_set_powermode(&bme, BME280_SLEEP_MODE);
 
     BME280_deinit(&bme);
+    SQL_close(&db);
     return rc;
 }
 
@@ -169,6 +183,15 @@ size_t handle_client(char* buf, size_t len)
     sleep(interval);
     s32_t rc = 0;
     apr_thread_mutex_lock(meas_mutex);
+    if (int_count++ % 600 == 0)
+    {
+        int_count = 0;
+        sql_stmt stmt;
+        SQL_prepare(&stmt, "INSERT INTO sensor VALUES(CURRENT_TIME,%lf,%lf,%lf);", temperature,
+                    pressure / 1000.0, humidity);
+        SQL_exec(&db, &stmt);
+        free(stmt.query);
+    }
     if ((rc = snprintf(buf, len, "$WIMDA,%.2lf,I,%.4lf,B,%.1lf,C,,,%.1lf,,,,,,,,,,,*",
                        pressure * 0.02953, pressure / 1000.0, temperature, humidity)) < 0)
     {
