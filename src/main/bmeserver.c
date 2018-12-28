@@ -183,15 +183,6 @@ size_t handle_client(char* buf, size_t len)
     sleep(interval);
     s32_t rc = 0;
     apr_thread_mutex_lock(meas_mutex);
-    if (int_count++ % 600 == 0)
-    {
-        int_count = 0;
-        sql_stmt stmt;
-        SQL_prepare(&stmt, "INSERT INTO sensor VALUES(CURRENT_TIME,%lf,%lf,%lf);", temperature,
-                    pressure / 1000.0, humidity);
-        SQL_exec(&db, &stmt);
-        free(stmt.query);
-    }
     if ((rc = snprintf(buf, len, "$WIMDA,%.2lf,I,%.4lf,B,%.1lf,C,,,%.1lf,,,,,,,,,,,*",
                        pressure * 0.02953, pressure / 1000.0, temperature, humidity)) < 0)
     {
@@ -229,6 +220,15 @@ static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, void* data)
         temperature = BME280_temp(bme);
         pressure    = BME280_press(bme);
         humidity    = BME280_humid(bme);
+        if (int_count++ % 600 == 0)
+        {
+            int_count = 0;
+            sql_stmt stmt;
+            SQL_prepare(&stmt, "INSERT INTO sensor VALUES(CURRENT_TIME,%lf,%lf,%lf);", temperature,
+                        pressure / 1000.0, humidity);
+            SQL_exec(&db, &stmt);
+            free(stmt.query);
+        }
         apr_thread_mutex_unlock(meas_mutex);
         sleep(interval);
     }
