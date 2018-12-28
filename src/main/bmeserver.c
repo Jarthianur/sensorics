@@ -145,7 +145,10 @@ int main(int argc, char** argv)
     sql_stmt stmt = {
         "DROP TABLE IF EXISTS sensor;CREATE TABLE sensor(time TEXT, temp REAL, press REAL, humid REAL);",
         NULL};
-    SQL_exec(&db, &stmt);
+    if (!SQL_exec(&db, &stmt).valid)
+    {
+        LOG("Table creation failed");
+    }
 
     // Run server
     server.port          = port;
@@ -220,13 +223,17 @@ static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, void* data)
         temperature = BME280_temp(bme);
         pressure    = BME280_press(bme);
         humidity    = BME280_humid(bme);
-        if (int_count++ % 600 == 0)
+        ++int_count;
+        if (int_count % 600 == 0)
         {
             int_count = 0;
             sql_stmt stmt;
             SQL_prepare(&stmt, "INSERT INTO sensor VALUES(CURRENT_TIME,%lf,%lf,%lf);", temperature,
-                        pressure / 1000.0, humidity);
-            SQL_exec(&db, &stmt);
+                        pressure, humidity);
+            if (!SQL_exec(&db, &stmt).valid)
+            {
+                LOG("Export to database failed");
+            }
             free(stmt.query);
         }
         apr_thread_mutex_unlock(meas_mutex);
