@@ -51,10 +51,9 @@ sql_result SQL_exec(sql_db* db, sql_stmt* stmt)
     return res;
 }
 
-bool_t SQL_prepare(sql_stmt* stmt, const char* fmt, ...)
+bool_t SQL_prepare(sql_stmt* stmt, const char* fmt, va_list args)
 {
     stmt->query = malloc(sizeof(char*) * 8192);
-    va_list args;
     snprintf(stmt->query, 8192, fmt, args);
     return TRUE;
 }
