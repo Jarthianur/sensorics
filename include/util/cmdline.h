@@ -26,5 +26,4 @@
 #include "types.h"
 
 u16_t CMD_parse_u16(const char* str, u16_t def);
-
 u32_t CMD_parse_u32(const char* str, u32_t def);

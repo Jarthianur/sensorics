@@ -19,26 +19,44 @@
  }
  */
 
-#pragma once
+#include "sql/sqlite.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
-#include "server.h"
-
-static SRV_DEFINE_PROCESS_CLIENT(simple_send)
+bool_t SQL_open(sql_db* db)
 {
-    SRV_CLIENT_INIT
-    char buf[8192];
-
-    while (server->running)
+    int rc = sqlite3_open(db->db_file, &(db->db));
+    if (rc != SQLITE_OK)
     {
-        apr_size_t len = server->handle_client(buf, sizeof(buf));
-        apr_socket_send(socket, buf, &len);
-
-        if (len == 0)
-        {
-            break;
-        }
+        sqlite3_close(db->db);
+        return FALSE;
     }
-    SRV_CLIENT_DEINIT
+    return TRUE;
+}
+
+void SQL_close(sql_db* db)
+{
+    sqlite3_close(db->db);
+}
+
+sql_result SQL_exec(sql_db* db, sql_stmt* stmt)
+{
+    sql_result res = {0, NULL, FALSE};
+    int        rc  = sqlite3_exec(db->db, stmt->query, NULL, NULL, NULL);
+    if (rc == SQLITE_OK)
+    {
+        res.valid = TRUE;
+    }
+    return res;
+}
+
+bool_t SQL_prepare(sql_stmt* stmt, const char* fmt, ...)
+{
+    va_list args;
+    stmt->query = malloc(sizeof(char*) * 8192);
+    va_start(args, fmt);
+    vsnprintf(stmt->query, 8192, fmt, args);
+    va_end(args);
+    return TRUE;
 }

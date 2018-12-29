@@ -21,24 +21,30 @@
 
 #pragma once
 
-#include <stdlib.h>
+#include <sqlite3.h>
 
-#include "server.h"
+#include "util/types.h"
 
-static SRV_DEFINE_PROCESS_CLIENT(simple_send)
+typedef struct
 {
-    SRV_CLIENT_INIT
-    char buf[8192];
+    const char* db_file;
+    sqlite3*    db;
+} sql_db;
 
-    while (server->running)
-    {
-        apr_size_t len = server->handle_client(buf, sizeof(buf));
-        apr_socket_send(socket, buf, &len);
+typedef struct
+{
+    size_t size;
+    void*  data;
+    bool_t valid;
+} sql_result;
 
-        if (len == 0)
-        {
-            break;
-        }
-    }
-    SRV_CLIENT_DEINIT
-}
+typedef struct
+{
+    char*         query;
+    sqlite3_stmt* stmt;
+} sql_stmt;
+
+bool_t SQL_open(sql_db* db);
+void   SQL_close(sql_db* db);
+sql_result SQL_exec(sql_db* db, sql_stmt* stmt);
+bool_t     SQL_prepare(sql_stmt* stmt, const char* fmt, ...);

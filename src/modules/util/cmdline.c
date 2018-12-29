@@ -27,6 +27,7 @@
 u16_t CMD_parse_u16(const char* str, u16_t def)
 {
     uint64_t p = strtoul(str, NULL, 10);
+
     if (errno == ERANGE || p > U16_MAX)
     {
         return def;
@@ -37,6 +38,7 @@ u16_t CMD_parse_u16(const char* str, u16_t def)
 u32_t CMD_parse_u32(const char* str, u32_t def)
 {
     uint64_t t = strtoul(str, NULL, 10);
+
     if (errno == ERANGE || t > U32_MAX)
     {
         return def;
