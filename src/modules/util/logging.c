@@ -32,5 +32,6 @@ const char* LOG_get_time()
     time(&t);
     ti = localtime(&t);
     strftime(LOG_time_str, sizeof(LOG_time_str), "%F %T", ti);
+
     return LOG_time_str;
 }

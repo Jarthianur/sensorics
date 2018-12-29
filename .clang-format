@@ -15,39 +15,28 @@ AllowShortIfStatementsOnASingleLine: true
 AllowShortLoopsOnASingleLine: true
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
-AlwaysBreakTemplateDeclarations: true
 BinPackArguments: true
 BinPackParameters: true
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterClass: true
   AfterControlStatement: true
   AfterEnum: true
   AfterFunction: true
-  AfterNamespace: true
   AfterStruct: true
   AfterUnion: true
   AfterExternBlock: true
-  BeforeCatch: true
   BeforeElse: true
   IndentBraces: false
   SplitEmptyFunction: false
   SplitEmptyRecord: false
-  SplitEmptyNamespace: false
 BreakBeforeBinaryOperators: None
-BreakBeforeInheritanceComma: false
 BreakBeforeTernaryOperators: false
-BreakConstructorInitializers: BeforeColon
 BreakStringLiterals: false
 ColumnLimit: 100
-CompactNamespaces: false
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
-ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true
 DerivePointerAlignment: false
 DisableFormat: false
-FixNamespaceComments: true
 ForEachMacros: ['FOREACH']
 IncludeBlocks: Regroup
 IncludeCategories:
@@ -55,8 +44,10 @@ IncludeCategories:
     Priority: 2
   - Regex: '^<'
     Priority: 1
+  - Regex: '^"i2c.*'
+    Priority: 3  
   - Regex: '^".*/'
-    Priority: 3
+    Priority: 4
 IncludeIsMainRegex: '$'
 IndentCaseLabels: true
 IndentPPDirectives: AfterHash
@@ -64,13 +55,11 @@ IndentWidth: 4
 IndentWrappedFunctionNames: true
 KeepEmptyLinesAtTheStartOfBlocks: false
 MaxEmptyLinesToKeep: 1
-NamespaceIndentation: None
 PointerAlignment: Left
 ReflowComments: true
 SortIncludes: true
 SortUsingDeclarations: true
 SpaceAfterCStyleCast: true
-SpaceAfterTemplateKeyword: false
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeParens: ControlStatements
 SpaceInEmptyParentheses: false

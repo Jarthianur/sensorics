@@ -27,7 +27,6 @@
 
 /**
  * Open file-descriptor to device dev at addr and enable io control over i2c bus.
- * @return ERROR on any error, else file-descriptor
  */
 int I2C_init_dev(const char* dev, u8_t addr);
 
@@ -38,24 +37,20 @@ void I2C_close_dev(int fd);
 
 /**
  * Write 1 Byte of data to device fd at register reg.
- * @return ERROR on any error, else SUCCESS
  */
 s32_t I2C_write_reg(int fd, u8_t reg, u8_t data);
 
 /**
  * Write block of data to device fd at register reg.
- * @return ERROR on any error, else SUCCESS
  */
 s32_t I2C_write_block(int fd, u8_t reg, size_t bytes, u8_t* data);
 
 /**
  * Read 1 Byte of data from device fd at register reg.
- * @return ERROR on any error, else SUCCESS
  */
 s32_t I2C_read_reg(int fd, u8_t reg, u8_t* data);
 
 /**
  * Read block of data to device fd at register reg.
- * @return ERROR on any error, else SUCCESS
  */
 s32_t I2C_read_block(int fd, u8_t reg, size_t bytes, u8_t* data);

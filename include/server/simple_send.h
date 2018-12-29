@@ -34,6 +34,7 @@ static SRV_DEFINE_PROCESS_CLIENT(simple_send)
     {
         apr_size_t len = server->handle_client(buf, sizeof(buf));
         apr_socket_send(socket, buf, &len);
+
         if (len == 0)
         {
             break;

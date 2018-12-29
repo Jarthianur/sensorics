@@ -43,11 +43,11 @@
 #define U64_MIN (0)
 #define S64_MIN (INT64_MIN)
 
-#ifndef TRUE
-#    define TRUE (1)
-#endif
 #ifndef FALSE
 #    define FALSE (0)
+#endif
+#ifndef TRUE
+#    define TRUE (!FALSE)
 #endif
 
 typedef uint8_t     u8_t;
