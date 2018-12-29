@@ -9,8 +9,8 @@ set(PROD_COMPILE_FLAGS "-O3 -Wall -Wextra -Werror")
 set(SRC_MAIN_DIR "${CMAKE_SOURCE_DIR}/src/main")
 set(SRC_MODULES_DIR "${CMAKE_SOURCE_DIR}/src/modules")
 
-find_package(SQLite3)
 find_package(APR)
+find_package(SQLite3)
 find_package(Threads)
 
 file(GLOB_RECURSE src_modules_all ${SRC_MODULES_DIR}/*.c)
@@ -29,8 +29,12 @@ list(REMOVE_ITEM src_modules_no_srv ${src_modules_srv})
 # targets
 #
 
+add_library(libsi2c SHARED ${src_modules_i2c})
+target_include_directories(libsi2c INTERFACE ${CMAKE_SOURCE_DIR}/include)
+
 add_executable(bmeserver ${SRC_MAIN_DIR}/bmeserver.c ${src_modules_no_sql})
 set_target_properties(bmeserver PROPERTIES COMPILE_FLAGS "${APR_COMPILE_FLAGS} ${PROD_COMPILE_FLAGS}")
+add_dependencies(bmeserver libsi2c)
 target_include_directories(bmeserver PUBLIC ${CMAKE_SOURCE_DIR}/include ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR})
 target_link_libraries(bmeserver PUBLIC ${APR_LIBRARIES} ${APRUTIL_LIBRARIES} Threads::Threads)
 
