@@ -33,3 +33,8 @@ add_executable(bmeserver ${SRC_MAIN_DIR}/bmeserver.c ${src_modules_no_sql})
 set_target_properties(bmeserver PROPERTIES COMPILE_FLAGS "${APR_COMPILE_FLAGS} ${PROD_COMPILE_FLAGS}")
 target_include_directories(bmeserver PUBLIC ${CMAKE_SOURCE_DIR}/include ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR})
 target_link_libraries(bmeserver PUBLIC ${APR_LIBRARIES} ${APRUTIL_LIBRARIES} Threads::Threads)
+
+add_executable(bmesql ${SRC_MAIN_DIR}/bmesql.c ${src_modules_no_srv})
+set_target_properties(bmesql PROPERTIES COMPILE_FLAGS "${APR_COMPILE_FLAGS} ${PROD_COMPILE_FLAGS}")
+target_include_directories(bmesql PUBLIC ${CMAKE_SOURCE_DIR}/include ${SQLITE3_INCLUDE_DIRS} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR})
+target_link_libraries(bmesql PUBLIC ${APR_LIBRARIES} ${APRUTIL_LIBRARIES} ${SQLITE3_LIBRARIES} Threads::Threads)
