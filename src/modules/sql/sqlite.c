@@ -22,6 +22,7 @@
 #include "sql/sqlite.h"
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 
 bool_t SQL_open(sql_db* db)
