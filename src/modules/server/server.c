@@ -27,18 +27,20 @@
 
 #include <apr_errno.h>
 
+#include "util/logging.h"
+
 #define DEFAULT_SO_BACKLOG (SOMAXCONN)
 #define MAX_CLIENTS (4)
 // microsec
 #define CONN_TIMEOUT (20000000)
 
-int error(apr_status_t stat);
+bool_t error(apr_status_t stat);
 
-s32_t SRV_run(basic_server* server, SRV_thread_handle thd_handle, apr_pool_t* parent)
+bool_t SRV_run(basic_server* server, SRV_thread_handle thd_handle, apr_pool_t* parent)
 {
     if (server->handle_client == NULL)
     {
-        return -1;
+        return FALSE;
     }
     apr_socket_t*     so_listen;
     apr_pool_t*       mem_pool;
@@ -124,27 +126,27 @@ s32_t SRV_run(basic_server* server, SRV_thread_handle thd_handle, apr_pool_t* pa
     apr_thread_mutex_destroy(server->cond_mutex);
     apr_pool_destroy(mem_pool);
 
-    return 0;
+    return TRUE;
 err_exit:
 {
     char errbuf[256];
     apr_strerror(ret_stat, errbuf, sizeof(errbuf));
-    printf("ERROR: %d, %s\n", ret_stat, errbuf);
+    LOGF("ERROR: %d, %s", ret_stat, errbuf);
     apr_thread_cond_destroy(server->close_cond);
     apr_thread_mutex_destroy(server->cond_mutex);
     apr_pool_destroy(mem_pool);
 
-    return -1;
+    return FALSE;
 }
 }
 
-int error(apr_status_t stat)
+bool_t error(apr_status_t stat)
 {
     char errbuf[256];
     apr_strerror(stat, errbuf, sizeof(errbuf));
-    printf("ERROR: %d, %s\n", stat, errbuf);
+    LOGF("ERROR: %d, %s", stat, errbuf);
 
-    return -1;
+    return FALSE;
 }
 
 void SRV_stop(basic_server* server)

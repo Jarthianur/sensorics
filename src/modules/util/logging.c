@@ -23,15 +23,14 @@
 
 #include <time.h>
 
-char LOG_time_str[64] = "";
-
 const char* LOG_get_time()
 {
-    time_t     t;
-    struct tm* ti;
+    static char time_str[64] = "";
+    time_t      t;
+    struct tm*  ti;
     time(&t);
     ti = localtime(&t);
-    strftime(LOG_time_str, sizeof(LOG_time_str), "%F %T", ti);
+    strftime(time_str, sizeof(time_str), "%F %T", ti);
 
-    return LOG_time_str;
+    return time_str;
 }

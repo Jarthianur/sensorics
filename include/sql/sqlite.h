@@ -40,11 +40,12 @@ typedef struct
 
 typedef struct
 {
-    char*         query;
-    sqlite3_stmt* stmt;
+    char* query;
+    // sqlite3_stmt* stmt;
 } sql_stmt;
 
-bool_t SQL_open(sql_db* db);
-void   SQL_close(sql_db* db);
+bool_t     SQL_open(sql_db* db);
+void       SQL_close(sql_db* db);
 sql_result SQL_exec(sql_db* db, sql_stmt* stmt);
 bool_t     SQL_prepare(sql_stmt* stmt, const char* fmt, ...);
+void       SQL_finalize(sql_stmt* stmt);

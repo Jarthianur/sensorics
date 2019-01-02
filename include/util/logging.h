@@ -27,8 +27,6 @@
 #    define LOG_COMPONENT ""
 #endif
 
-extern char LOG_time_str[64];
-
 const char* LOG_get_time();
 
 #define LOG(MSG) printf("%s [" LOG_COMPONENT "]:: %s\n", MSG, LOG_get_time())

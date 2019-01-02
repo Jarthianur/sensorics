@@ -28,12 +28,14 @@
 static SRV_DEFINE_PROCESS_CLIENT(simple_send)
 {
     SRV_CLIENT_INIT
-    char buf[8192];
+    buffer buf;
+    BUF_new(&buf, 1);
 
     while (server->running)
     {
-        apr_size_t len = server->handle_client(buf, sizeof(buf));
-        apr_socket_send(socket, buf, &len);
+        server->handle_client(&buf);
+        apr_size_t len = buf.length;
+        apr_socket_send(socket, buf.data, &len);
 
         if (len == 0)
         {

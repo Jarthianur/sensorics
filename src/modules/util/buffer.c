@@ -21,7 +21,6 @@
 
 #include "util/buffer.h"
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,7 +29,8 @@ bool_t BUF_maybe_realloc(buffer* buf, size_t len);
 
 bool_t BUF_new(buffer* buf, size_t init)
 {
-    if ((buf->data = calloc(init, sizeof(char))) == NULL)
+    buf->data = NULL;
+    if (init > 0 && (buf->data = calloc(init, sizeof(char))) == NULL)
     {
         return FALSE;
     }
@@ -61,16 +61,22 @@ bool_t BUF_copy(const buffer* src, buffer* dest)
 
 void BUF_move(buffer* src, buffer* dest)
 {
-    if (dest->data != NULL)
-    {
-        free(dest->data);
-    }
+    free(dest->data);
     dest->data      = src->data;
     dest->length    = src->length;
     dest->allocated = src->allocated;
     src->data       = NULL;
     src->length     = 0;
     src->allocated  = 0;
+}
+
+bool_t BUF_assign(buffer* buf, char* cstr)
+{
+    free(buf->data);
+    size_t len     = strlen(cstr);
+    buf->data      = cstr;
+    buf->length    = len;
+    buf->allocated = len;
 }
 
 void BUF_clear(buffer* buf)
@@ -84,6 +90,10 @@ void BUF_clear(buffer* buf)
 
 void BUF_shrink(buffer* buf)
 {
+    if (buf->length == buf->allocated)
+    {
+        return;
+    }
     char* new_data = realloc(buf->data, buf->length);
     if (new_data != NULL)
     {
@@ -93,7 +103,7 @@ void BUF_shrink(buffer* buf)
 
 bool_t BUF_append(const buffer* src, buffer* dest)
 {
-    size_t len = dest->length + src->length - 1;  // only 1 null byte
+    size_t len = dest->length + src->length - 1;
     if (!BUF_maybe_realloc(dest, len))
     {
         return FALSE;
@@ -127,7 +137,7 @@ bool_t BUF_remove(buffer* buf, size_t pos, size_t len)
     }
     memmove(buf->data + pos, buf->data + pos + len, buf->length - pos - len);
     buf->length -= len;
-    buf->data[buf->length - 1] = 0;  // just to be sure
+    buf->data[buf->length - 1] = 0;
     return TRUE;
 }
 
@@ -144,6 +154,20 @@ bool_t BUF_sprintf(buffer* buf, const char* fmt, ...)
     }
     vsnprintf(buf->data, buf->allocated, fmt, args_cp);
     va_end(args_cp);
+    return TRUE;
+}
+
+bool_t BUF_vsprintf(buffer* buf, const char* fmt, va_list args)
+{
+    va_list args_cp;
+    va_copy(args_cp, args);
+    s32_t len = vsnprintf(NULL, 0, fmt, args_cp) + 1;
+    va_end(args_cp);
+    if (len < 0 && !BUF_maybe_realloc(buf, len))
+    {
+        return FALSE;
+    }
+    vsnprintf(buf->data, buf->allocated, fmt, args);
     return TRUE;
 }
 
