@@ -29,6 +29,7 @@
 #include <apr_thread_mutex.h>
 #include <apr_thread_proc.h>
 
+#include "util/buffer.h"
 #include "util/types.h"
 
 #define SRV_DEFAULT_PORT (7997)
@@ -66,7 +67,7 @@
  * @param size_t array length
  * @return chars (bytes) written to the ptr
  */
-typedef size_t (*SRV_client_handler)(char*, size_t);
+typedef bool_t (*SRV_client_handler)(buffer* /*buf*/);
 
 typedef void* APR_THREAD_FUNC (*SRV_thread_handle)(apr_thread_t*, void*);
 
@@ -86,6 +87,6 @@ typedef struct
     apr_socket_t* socket;
 } client_data;
 
-s32_t SRV_run(basic_server* server, SRV_thread_handle thd_handle, apr_pool_t* parent);
+bool_t SRV_run(basic_server* server, SRV_thread_handle thd_handle, apr_pool_t* parent);
 
 void SRV_stop(basic_server* server);

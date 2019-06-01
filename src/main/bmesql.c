@@ -29,6 +29,7 @@
 
 #include "bme280/bme280.h"
 #include "sql/sqlite.h"
+#include "util/buffer.h"
 #include "util/cmdline.h"
 #include "util/logging.h"
 #include "util/types.h"
@@ -89,8 +90,8 @@ int main(int argc, char** argv)
         LOG("Could not open database");
     }
     sql_stmt stmt = {
-        "DROP TABLE IF EXISTS sensor;CREATE TABLE sensor(time TEXT, temp REAL, press REAL, humid REAL);",
-        NULL};
+        "DROP TABLE IF EXISTS sensor;CREATE TABLE sensor(time TEXT, temp REAL, press REAL, humid REAL);"
+        /*, NULL*/};
 
     if (!SQL_exec(&db, &stmt).valid)
     {
@@ -114,7 +115,7 @@ int main(int argc, char** argv)
         {
             LOG("Export to database failed");
         }
-        free(stmt.query);
+        SQL_finalize(&stmt);
         u32_t int_count = 0;
 
         while (int_count++ < interval && run_status)

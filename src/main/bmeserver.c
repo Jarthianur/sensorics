@@ -34,11 +34,12 @@
 #include "bme280/bme280.h"
 #include "server/server.h"
 #include "server/simple_send.h"
+#include "util/buffer.h"
 #include "util/cmdline.h"
 #include "util/logging.h"
 #include "util/types.h"
 
-size_t       handle_client(char* buff, size_t len);
+bool_t       handle_client(buffer* buf);
 static void* APR_THREAD_FUNC poll_bme280(apr_thread_t* thd, void*);
 void                         handle_signal(int signo);
 
@@ -119,42 +120,38 @@ int main(int argc, char** argv)
     return rc;
 }
 
-u8_t checksum(const char* sentence, size_t size)
+u8_t checksum(const buffer* buf)
 {
-    u8_t   csum = 0;
-    size_t i    = 1;  // $ in nmea str not included
-    while (sentence[i] != '*' && sentence[i] != '\0' && i < size)
+    u8_t csum = 0;
+    for (size_t i = 1; i < buf->length - 2; ++i)  // ignore $,* and 0-byte
     {
-        csum ^= (u8_t) sentence[i++];
+        csum ^= (u8_t) buf->data[i];
     }
+
     return csum;
 }
 
-size_t handle_client(char* buf, size_t len)
+bool_t handle_client(buffer* buf)
 {
     sleep(interval);
-    s32_t rc = 0;
     apr_thread_mutex_lock(meas_mutex);
-    if ((rc = snprintf(buf, len, "$WIMDA,%.2lf,I,%.4lf,B,%.1lf,C,,,%.1lf,,,,,,,,,,,*",
-                       pressure * 0.02953, pressure / 1000.0, temperature, humidity)) < 0)
+    if (!BUF_sprintf(buf, "$WIMDA,%.2lf,I,%.4lf,B,%.1lf,C,,,%.1lf,,,,,,,,,,,*", pressure * 0.02953,
+                     pressure / 1000.0, temperature, humidity))
     {
-        return 0;
+        return FALSE;
     }
     apr_thread_mutex_unlock(meas_mutex);
-    u8_t   csum = checksum(buf, rc);
-    char   end[8];
-    size_t l = rc;
-    if ((rc = snprintf(end, 8, "%02x\r\n", csum)) < 0)
+    u8_t csum = checksum(buf);
+    char end[8];
+    if (snprintf(end, sizeof(end), "%02x\r\n", csum) < 0)
     {
-        return 0;
+        return FALSE;
     }
-    l += rc;
-    if (l < len)
+    if (!BUF_append_cstr(end, buf))
     {
-        strcat(buf, end);
-        return l;
+        return FALSE;
     }
-    return 0;
+    return TRUE;
 }
 
 static void* APR_THREAD_FUNC poll_bme280(_unused_ apr_thread_t* thd, void* data)

@@ -21,8 +21,11 @@
 
 #include "sql/sqlite.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "util/buffer.h"
 
 bool_t SQL_open(sql_db* db)
 {
@@ -53,10 +56,18 @@ sql_result SQL_exec(sql_db* db, sql_stmt* stmt)
 
 bool_t SQL_prepare(sql_stmt* stmt, const char* fmt, ...)
 {
+    buffer buf;
+    BUF_new(&buf, 128);
     va_list args;
-    stmt->query = malloc(sizeof(char*) * 8192);
     va_start(args, fmt);
-    vsnprintf(stmt->query, 8192, fmt, args);
+    bool_t res = BUF_vsprintf(&buf, fmt, args);
     va_end(args);
-    return TRUE;
+    BUF_shrink(&buf);
+    stmt->query = buf.data;
+    return res;
+}
+
+void SQL_finalize(sql_stmt* stmt)
+{
+    free(stmt->query);
 }

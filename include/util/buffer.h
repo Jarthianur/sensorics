@@ -19,18 +19,28 @@
  }
  */
 
-#include "util/logging.h"
+#pragma once
 
-#include <time.h>
+#include <stdarg.h>
 
-const char* LOG_get_time()
+#include "types.h"
+
+typedef struct
 {
-    static char time_str[64] = "";
-    time_t      t;
-    struct tm*  ti;
-    time(&t);
-    ti = localtime(&t);
-    strftime(time_str, sizeof(time_str), "%F %T", ti);
+    size_t length;
+    char*  data;
+    size_t allocated;
+} buffer;
 
-    return time_str;
-}
+bool_t BUF_new(buffer* buf, size_t init);
+void   BUF_free(buffer* buf);
+bool_t BUF_copy(const buffer* src, buffer* dest);
+void   BUF_move(buffer* src, buffer* dest);
+bool_t BUF_assign(buffer* buf, char* cstr);
+void   BUF_clear(buffer* buf);
+void   BUF_shrink(buffer* buf);
+bool_t BUF_append(const buffer* src, buffer* dest);
+bool_t BUF_append_cstr(const char* src, buffer* dest);
+bool_t BUF_remove(buffer* buf, size_t pos, size_t len);
+bool_t BUF_sprintf(buffer* buf, const char* fmt, ...);
+bool_t BUF_vsprintf(buffer* buf, const char* fmt, va_list args);
