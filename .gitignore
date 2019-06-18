@@ -3,3 +3,5 @@
 .settings/
 src/server/main.c
 **/*.out
+*.lock
+/target/
