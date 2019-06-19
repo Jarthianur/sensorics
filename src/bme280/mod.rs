@@ -36,12 +36,28 @@ const REG_TEMP: u8 = 0xFA;
 const REG_HUMID: u8 = 0xFD;
 const REG_MEAS: u8 = REG_PRESS;
 
+// power modes
+const PWR_SLEEP: u8 = 0x00;
+const PWR_FORCED: u8 = 0x01;
+const PWR_NORMAL: u8 = 0x03;
+
 #[derive(Debug)]
 #[repr(u8)]
 enum PowerModes {
-    SLEEP = 0x00,
-    FORCED = 0x01,
-    NORMAL = 0x03,
+    SLEEP = PWR_SLEEP,
+    FORCED = PWR_FORCED,
+    NORMAL = PWR_NORMAL,
+}
+
+impl From<u8> for PowerModes {
+    fn from(item: u8) -> Self {
+        match item {
+            PWR_SLEEP => PowerModes::SLEEP,
+            PWR_FORCED => PowerModes::FORCED,
+            PWR_NORMAL => PowerModes::NORMAL,
+            _ => panic!("{} is not a valid PowerMode", item),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -150,8 +166,7 @@ struct Oversampling {
 }
 
 pub struct Bme280<T: I2CDevice> {
-    dev: T,
-    buffer: [u8; 32],
+    device: T,
     calib: CalibTable,
     uncomp_meas: UncompMeas,
     power_mode: PowerModes,
@@ -164,14 +179,25 @@ pub struct Bme280<T: I2CDevice> {
     config_reg: u8,
 }
 
+macro_rules! bit_slice {
+    ($regvar: ident, $mask:literal, $pos:literal, $val:ident) => {
+        ($regvar & !$mask) | (($val << $pos) & $mask)
+    };
+}
+
+macro_rules! get_bit_slice {
+    ( $regvar:ident,  $mask:literal,  $pos:literal) => {
+        ($regvar & $mask) >> $pos
+    };
+}
+
 impl<T> Bme280<T>
 where
     T: I2CDevice,
 {
     pub fn new(dev: T) -> Result<Bme280<T>, i32> {
         let mut bme = Bme280 {
-            dev: dev,
-            buffer: [0; 32],
+            device: dev,
             calib: Default::default(),
             uncomp_meas: Default::default(),
             power_mode: PowerModes::NORMAL,
@@ -190,7 +216,7 @@ where
     }
 
     fn read_calib(&mut self) -> bool {
-        let data = match self.dev.smbus_read_i2c_block_data(REG_DIG_T1, 26) {
+        let data = match self.device.smbus_read_i2c_block_data(REG_DIG_T1, 26) {
             Ok(n) => n,
             Err(_) => return false,
         };
@@ -210,7 +236,7 @@ where
         calib.dig_P9 = ((data[23] as i16) << 8) | data[22] as i16;
         calib.dig_H1 = data[25];
 
-        let data = match self.dev.smbus_read_i2c_block_data(REG_DIG_H2, 7) {
+        let data = match self.device.smbus_read_i2c_block_data(REG_DIG_H2, 7) {
             Ok(n) => n,
             Err(_) => return false,
         };
@@ -223,18 +249,18 @@ where
         true
     }
 
-    fn compensate_temp(&mut self) -> () {
+    fn compensate_temp(&mut self) {
         let adc_t = self.uncomp_meas.meas.temperature as f64;
         let ref calib = self.calib;
         let var1 = (adc_t / 16384.0 - (calib.dig_T1 as f64) / 1024.0) * calib.dig_T2 as f64;
-        let var2 = ((adc_t / 131072.0 - (calib.dig_T1 as f64) / 8192.0)
-            * (adc_t / 131072.0 - (calib.dig_T1 as f64) / 8192.0))
+        let var2 = ((adc_t / 131_072.0 - (calib.dig_T1 as f64) / 8192.0)
+            * (adc_t / 131_072.0 - (calib.dig_T1 as f64) / 8192.0))
             * calib.dig_T3 as f64;
         self.uncomp_meas.t_fine = (var1 + var2) as i64;
         self.comp_meas.temperature = (var1 + var2) / 5120.0;
     }
 
-    fn compensate_press(&mut self) -> () {
+    fn compensate_press(&mut self) {
         let adc_p = self.uncomp_meas.meas.pressure as f64;
         let ref calib = self.calib;
         let mut var1 = self.uncomp_meas.t_fine as f64 / 2.0 - 64000.0;
@@ -242,29 +268,29 @@ where
             + var1 * calib.dig_P5 as f64 * 2.0)
             / 4.0)
             + calib.dig_P4 as f64 * 65536.0;
-        var1 =
-            (calib.dig_P3 as f64 * var1 * var1 / 524288.0 + calib.dig_P2 as f64 * var1) / 524288.0;
+        var1 = (calib.dig_P3 as f64 * var1 * var1 / 524_288.0 + calib.dig_P2 as f64 * var1)
+            / 524_288.0;
         var1 = (1.0 + var1 / 32768.0) * calib.dig_P1 as f64;
         if var1 != 0.0 {
-            let mut p = (1048576.0 - adc_p - (var2 / 4096.0)) * 6250.0 / var1;
-            var1 = calib.dig_P9 as f64 * p * p / 2147483648.0;
+            let mut p = (1_048_576.0 - adc_p - (var2 / 4096.0)) * 6250.0 / var1;
+            var1 = calib.dig_P9 as f64 * p * p / 2_147_483_648.0;
             var2 = p * calib.dig_P8 as f64 / 32768.0;
             p = p + (var1 + var2 + calib.dig_P7 as f64) / 16.0;
             self.comp_meas.pressure = p / 100.0;
         }
     }
 
-    fn compensate_humid(&mut self) -> () {
+    fn compensate_humid(&mut self) {
         let adc_h = self.uncomp_meas.meas.humidity as f64;
         let ref calib = self.calib;
         let mut var_h = self.uncomp_meas.t_fine as f64 - 76800.0;
         var_h = (adc_h - (calib.dig_H4 as f64 * 64.0 + calib.dig_H5 as f64 / 16384.0 * var_h))
             * (calib.dig_H2 as f64 / 65536.0
                 * (1.0
-                    + calib.dig_H6 as f64 / 67108864.0
+                    + calib.dig_H6 as f64 / 67_108_864.0
                         * var_h
-                        * (1.0 + calib.dig_H3 as f64 / 67108864.0 * var_h)));
-        var_h = var_h * (1.0 - calib.dig_H1 as f64 * var_h / 524288.0);
+                        * (1.0 + calib.dig_H3 as f64 / 67_108_864.0 * var_h)));
+        var_h = var_h * (1.0 - calib.dig_H1 as f64 * var_h / 524_288.0);
         if var_h > 100.0 {
             var_h = 100.0;
         } else if var_h < 0.0 {
@@ -273,28 +299,69 @@ where
         self.comp_meas.humidity = var_h;
     }
 
-    fn unpack_pressure(&mut self) -> () {
+    fn unpack_pressure(&mut self) {
         let ref mut meas = self.uncomp_meas;
         meas.meas.pressure = (((meas.pmsb as u32) << 12)
             | ((meas.plsb as u32) << 4)
             | (meas.pxsb as u32 >> 4)) as i32;
     }
 
-    fn unpack_temperature(&mut self) -> () {
+    fn unpack_temperature(&mut self) {
         let ref mut meas = self.uncomp_meas;
         meas.meas.temperature = (((meas.tmsb as u32) << 12)
             | ((meas.tlsb as u32) << 4)
             | (meas.txsb as u32 >> 4)) as i32;
     }
 
-    fn unpack_humidity(&mut self) -> () {
+    fn unpack_humidity(&mut self) {
         let ref mut meas = self.uncomp_meas;
         meas.meas.humidity = (((meas.hmsb as u32) << 8) | meas.hlsb as u32) as i32;
     }
 
+    fn read_temp(&mut self) -> bool {
+        let ref mut meas = self.uncomp_meas;
+        let data = match self.device.smbus_read_i2c_block_data(REG_TEMP, 3) {
+            Ok(n) => n,
+            Err(_) => return false,
+        };
+        meas.tmsb = data[0];
+        meas.tlsb = data[1];
+        meas.txsb = data[2];
+        self.unpack_temperature();
+
+        true
+    }
+
+    fn read_press(&mut self) -> bool {
+        let ref mut meas = self.uncomp_meas;
+        let data = match self.device.smbus_read_i2c_block_data(REG_PRESS, 3) {
+            Ok(n) => n,
+            Err(_) => return false,
+        };
+        meas.pmsb = data[0];
+        meas.plsb = data[1];
+        meas.pxsb = data[2];
+        self.unpack_pressure();
+
+        true
+    }
+
+    fn read_humid(&mut self) -> bool {
+        let ref mut meas = self.uncomp_meas;
+        let data = match self.device.smbus_read_i2c_block_data(REG_HUMID, 2) {
+            Ok(n) => n,
+            Err(_) => return false,
+        };
+        meas.hmsb = data[0];
+        meas.hlsb = data[1];
+        self.unpack_humidity();
+
+        true
+    }
+
     fn readBurstTPH(&mut self) -> bool {
         let ref mut meas = self.uncomp_meas;
-        let data = match self.dev.smbus_read_i2c_block_data(REG_MEAS, 8) {
+        let data = match self.device.smbus_read_i2c_block_data(REG_MEAS, 8) {
             Ok(n) => n,
             Err(_) => return false,
         };
@@ -306,7 +373,6 @@ where
         meas.txsb = data[5];
         meas.hmsb = data[6];
         meas.hlsb = data[7];
-
         self.unpack_pressure();
         self.unpack_temperature();
         self.unpack_humidity();
@@ -315,5 +381,58 @@ where
         self.compensate_humid();
 
         true
+    }
+
+    /*
+        u8_t BME280_set_powermode(bme280* inst, u8_t mode)
+    {
+        u8_t ctrl_val     = 0;
+        u8_t prev_mode    = 0;
+        u8_t ctrl_hum_pre = 0;
+        u8_t conf_pre     = 0;
+        u8_t common       = 0;
+
+        if (mode <= BME280_NORMAL_MODE)
+        {
+            ctrl_val  = inst->ctrl_meas_reg;
+            ctrl_val  = BME280_bit_slice(ctrl_val, 0x03, 0, mode);
+            prev_mode = BME280_get_powermode(inst);
+
+            if (prev_mode != BME280_SLEEP_MODE)
+            {
+                BME280_soft_rst(inst);
+                BME280_delay(3);
+                conf_pre = inst->config_reg;
+                BUS_write_reg(inst->fd, BME280_REG_CONF, conf_pre);
+                ctrl_hum_pre = inst->ctrl_humid_reg;
+                BUS_write_reg(inst->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
+                BUS_write_reg(inst->fd, BME280_REG_CTRL, ctrl_val);
+            }
+            else
+            {
+                BUS_write_reg(inst->fd, BME280_REG_CTRL, ctrl_val);
+            }
+            BUS_read_reg(inst->fd, BME280_REG_CTRL, &common);
+            inst->ctrl_meas_reg = common;
+            BUS_read_reg(inst->fd, BME280_REG_CTRL_HUMID, &common);
+            inst->ctrl_humid_reg = common;
+            BUS_read_reg(inst->fd, BME280_REG_CONF, &common);
+            inst->config_reg = common;
+        }
+        else
+        {
+            return BME280_ERROR;
+        }
+        return BME280_SUCCESS;
+    }
+    */
+    fn get_powermode(&mut self) -> PowerModes {
+        let data = match self.device.smbus_read_byte_data(REG_CTRL) {
+            Ok(b) => b,
+            Err(_) => 0xFF,
+        };
+        self.power_mode = get_bit_slice!(data, 0x03, 0).into();
+
+        self.power_mode
     }
 }
