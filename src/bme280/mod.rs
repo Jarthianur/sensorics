@@ -41,7 +41,7 @@ const PWR_SLEEP: u8 = 0x00;
 const PWR_FORCED: u8 = 0x01;
 const PWR_NORMAL: u8 = 0x03;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(u8)]
 enum PowerModes {
     SLEEP = PWR_SLEEP,
@@ -56,6 +56,16 @@ impl From<u8> for PowerModes {
             PWR_FORCED => PowerModes::FORCED,
             PWR_NORMAL => PowerModes::NORMAL,
             _ => panic!("{} is not a valid PowerMode", item),
+        }
+    }
+}
+
+impl From<PowerModes> for u8 {
+    fn from(item: PowerModes) -> Self {
+        match item {
+            PowerModes::FORCED => PWR_FORCED,
+            PowerModes::NORMAL => PWR_NORMAL,
+            PowerModes::SLEEP => PWR_SLEEP,
         }
     }
 }
@@ -180,7 +190,7 @@ pub struct Bme280<T: I2CDevice> {
 }
 
 macro_rules! bit_slice {
-    ($regvar: ident, $mask:literal, $pos:literal, $val:ident) => {
+    ($regvar: expr, $mask:literal, $pos:literal, $val:ident) => {
         ($regvar & !$mask) | (($val << $pos) & $mask)
     };
 }
@@ -383,49 +393,53 @@ where
         true
     }
 
-    /*
-        u8_t BME280_set_powermode(bme280* inst, u8_t mode)
-    {
-        u8_t ctrl_val     = 0;
-        u8_t prev_mode    = 0;
-        u8_t ctrl_hum_pre = 0;
-        u8_t conf_pre     = 0;
-        u8_t common       = 0;
-
-        if (mode <= BME280_NORMAL_MODE)
-        {
-            ctrl_val  = inst->ctrl_meas_reg;
-            ctrl_val  = BME280_bit_slice(ctrl_val, 0x03, 0, mode);
-            prev_mode = BME280_get_powermode(inst);
-
-            if (prev_mode != BME280_SLEEP_MODE)
-            {
-                BME280_soft_rst(inst);
-                BME280_delay(3);
-                conf_pre = inst->config_reg;
-                BUS_write_reg(inst->fd, BME280_REG_CONF, conf_pre);
-                ctrl_hum_pre = inst->ctrl_humid_reg;
-                BUS_write_reg(inst->fd, BME280_REG_CTRL_HUMID, ctrl_hum_pre);
-                BUS_write_reg(inst->fd, BME280_REG_CTRL, ctrl_val);
-            }
-            else
-            {
-                BUS_write_reg(inst->fd, BME280_REG_CTRL, ctrl_val);
-            }
-            BUS_read_reg(inst->fd, BME280_REG_CTRL, &common);
-            inst->ctrl_meas_reg = common;
-            BUS_read_reg(inst->fd, BME280_REG_CTRL_HUMID, &common);
-            inst->ctrl_humid_reg = common;
-            BUS_read_reg(inst->fd, BME280_REG_CONF, &common);
-            inst->config_reg = common;
+    fn soft_rst(&mut self) -> bool {
+        match self.device.smbus_write_byte_data(REG_SOFTRST, RST) {
+            Ok(_) => true,
+            Err(_) => false,
         }
-        else
-        {
-            return BME280_ERROR;
-        }
-        return BME280_SUCCESS;
     }
-    */
+
+    fn delay(&self, ms: u8) {
+        std::thread::sleep(std::time::Duration::from_millis(ms.into()));
+    }
+
+    fn BME280_set_powermode(&mut self, mode: PowerModes) -> bool {
+        let m: u8 = mode.into();
+        let ctrl_val = bit_slice!(self.ctrl_meas_reg, 0x03u8, 0u8, m);
+        let prev_mode = self.get_powermode();
+        let ctrl_hum_pre = self.ctrl_humid_reg;
+        let conf_pre = self.config_reg;
+
+        if prev_mode != PowerModes::SLEEP {
+            self.soft_rst();
+            self.delay(3);
+            self.device
+                .smbus_write_byte_data(REG_CONF, conf_pre)
+                .unwrap();
+            self.device
+                .smbus_write_byte_data(REG_CTRL_HUMID, ctrl_hum_pre)
+                .unwrap();
+        }
+        self.device
+            .smbus_write_byte_data(REG_CTRL, ctrl_val)
+            .unwrap();
+        self.ctrl_meas_reg = match self.device.smbus_read_byte_data(REG_CTRL) {
+            Ok(b) => b,
+            Err(_) => 0u8,
+        };
+        self.ctrl_humid_reg = match self.device.smbus_read_byte_data(REG_CTRL_HUMID) {
+            Ok(b) => b,
+            Err(_) => 0u8,
+        };
+        self.config_reg = match self.device.smbus_read_byte_data(REG_CONF) {
+            Ok(b) => b,
+            Err(_) => 0u8,
+        };
+
+        true
+    }
+
     fn get_powermode(&mut self) -> PowerModes {
         let data = match self.device.smbus_read_byte_data(REG_CTRL) {
             Ok(b) => b,
